@@ -438,7 +438,7 @@ async function executePriceCalculation() {
   const rateCode = document.getElementById("calc-rate").value || "WEB";
   const pickupDate = document.getElementById("calc-pickup-date").value;
   const dropoffDate = document.getElementById("calc-dropoff-date").value;
-  const station = document.getElementById("calc-station").value || "1";
+  const station = document.getElementById("calc-station").value || "LPA";
 
   const resultsDiv = document.getElementById("price-results");
   const statusMessage = document.getElementById("price-status-message");
@@ -462,82 +462,83 @@ async function executePriceCalculation() {
   const grupoID = coche.grupo;
 
   const soapRequest = `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns="http://www.jimpisoft.pt/Rentway_Reservations_WS/">
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:tns="http://www.jimpisoft.pt/Rentway_Reservations_WS/getMultiplePrices">
+  <soap:Header/>
   <soap:Body>
-    <getMultiplePrices>
-      <objRequest>
-        <companyCode>200037</companyCode>
-        <username>AurumCars</username>
-        <password>tMfNlAMHicvUM6a</password>
-        <groupID>${grupoID}</groupID>
-        <rateCode>${rateCode}</rateCode>
-        <pickUp>
-          <Date>${pickupDate}T10:00:00</Date>
-          <rentalStation>${station}</rentalStation>
-        </pickUp>
-        <dropOff>
-          <Date>${dropoffDate}T10:00:00</Date>
-          <rentalStation>${station}</rentalStation>
-        </dropOff>
-      </objRequest>
-    </getMultiplePrices>
+    <tns:MultiplePrices>
+      <tns:objRequest>
+        <tns:companyCode>200037</tns:companyCode>
+        <tns:customerCode>18</tns:customerCode>
+        <tns:username>Booking</tns:username>
+        <tns:password>0NPwqRKSNf47S6f</tns:password>
+        <tns:groupID>${grupoID}</tns:groupID>
+        <tns:rateCode>${rateCode}</tns:rateCode>
+        <tns:pickUp>
+          <tns:Date>${pickupDate}T10:00:00</tns:Date>
+          <tns:rentalStation>${station}</tns:rentalStation>
+        </tns:pickUp>
+        <tns:dropOff>
+          <tns:Date>${dropoffDate}T10:00:00</tns:Date>
+          <tns:rentalStation>${station}</tns:rentalStation>
+        </tns:dropOff>
+      </tns:objRequest>
+    </tns:MultiplePrices>
   </soap:Body>
 </soap:Envelope>`;
 
   try {
-    // Apuntamos directamente a la fuente, sin intermediarios
-    const wsUrl = "https://ws-soap-api.jimpisoft.com/getMultiplePrices.asmx";
+    const wsUrl = "https://small-moon-0352.mcebrian-334.workers.dev";
     const response = await fetch(wsUrl, {
       method: "POST",
       cache: "no-store",
-      headers: { "Content-Type": "application/soap+xml; charset=utf-8" },
+      headers: { "Content-Type": "text/xml; charset=utf-8" },
       body: soapRequest
     });
     const responseText = await response.text();
-    // ESTA LÍNEA ES LA MAGIA: Nos va a chivar en la consola qué dice Jimpisoft exactamente
-    console.log("RESPUESTA REAL DE JIMPISOFT:", responseText);
+    console.log("RESPUESTA JIMPISOFT:", responseText);
 
-    const textData = await response.text();
-    console.log("RESPUESTA CRUDA DE JIMPISOFT:", textData);
-
-    // Parsear el XML recibido para poder leerlo como si fuera HTML
+    // Parsear el XML recibido
     const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(textData, "text/xml");
+    const xmlDoc = parser.parseFromString(responseText, "text/xml");
 
     // Verificar si el propio servidor de Jimpisoft devolvió un error de negocio
-    const errorCode = xmlDoc.querySelector("errorCode")?.textContent;
+    const errorCode = xmlDoc.querySelector("errorCode")?.textContent?.trim();
     if (errorCode && errorCode !== "0" && errorCode !== "") {
+      const mensajes = {
+        "ERROR: PICKUP STATION DOES NOT EXIST!": "La estación de recogida no existe. Verifica el ID de oficina.",
+        "ERROR: USER OR PASSWORD INCORRECT": "Credenciales incorrectas.",
+        "ERROR: PICKUP DATE CANNOT BE LOWER THAN TODAY": "La fecha de recogida no puede ser anterior a hoy.",
+        "ERROR: RATE CODE DOES NOT EXIST!": "El código de tarifa no existe.",
+      };
+      const msg = mensajes[errorCode] || `Error Rentway: ${errorCode}`;
       statusMessage.style.display = "block";
       statusMessage.style.background = "#7f1d1d";
       statusMessage.style.color = "#fca5a5";
-      statusMessage.textContent = `Aviso del sistema: ${errorCode}`;
+      statusMessage.textContent = msg;
       return;
     }
 
-    // EXTRAER VALORES DEL XML (Adaptable según etiquetas exactas de tu respuesta)
-    // Jimpisoft suele usar estructuras tipo <TotalValue>, <DailyValue>, <Days> o similares.
-    const totalValueText = xmlDoc.querySelector("TotalValue")?.textContent || xmlDoc.querySelector("Value")?.textContent || "0";
-    const dailyValueText = xmlDoc.querySelector("DailyValue")?.textContent || xmlDoc.querySelector("PricePerDay")?.textContent || "0";
-    const daysText = xmlDoc.querySelector("Days")?.textContent || xmlDoc.querySelector("TotalDays")?.textContent;
+    // Extraer campos reales del diffgram de Rentway
+    const totalValueText    = xmlDoc.querySelector("previewValue")?.textContent || "0";
+    const dailyValueText    = xmlDoc.querySelector("totalDayValueWithTax")?.textContent || "0";
+    const daysText          = xmlDoc.querySelector("nrDays")?.textContent;
+    const actualRateCode    = xmlDoc.querySelector("rateCode")?.textContent || rateCode;
 
-    // Calcular días manualmente si el XML no los incluye
     const d1 = new Date(pickupDate);
     const d2 = new Date(dropoffDate);
     const calculatedDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) || 1;
-    const finalDays = daysText || calculatedDays;
+    const finalDays = daysText ? parseInt(daysText) : calculatedDays;
 
-    // Formatear a números limpios
     const totalValue = parseFloat(totalValueText) || 0;
     const dailyValue = parseFloat(dailyValueText) || (totalValue / finalDays);
 
-    // Formateadores de moneda
     const currencyFormatter = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 
-    // PINTAR LOS RESULTADOS EN LA INTERFAZ VISUAL
+    // Pintar resultados
     document.getElementById("res-model-name").textContent = coche.nombre_completo || `${coche.marca} ${coche.modelo}`;
     document.getElementById("res-dates").textContent = `Del ${formatDateSpan(pickupDate)} al ${formatDateSpan(dropoffDate)}`;
-    document.getElementById("res-rate-badge").textContent = `Tarifa: ${rateCode}`;
-    document.getElementById("res-total-days").textContent = `${finalDays} ${finalDays == 1 ? 'día' : 'días'}`;
+    document.getElementById("res-rate-badge").textContent = `Tarifa: ${actualRateCode}`;
+    document.getElementById("res-total-days").textContent = `${finalDays} ${finalDays === 1 ? 'día' : 'días'}`;
     document.getElementById("res-price-day").textContent = `${currencyFormatter.format(dailyValue)} / día`;
     document.getElementById("res-price-total").textContent = currencyFormatter.format(totalValue);
 
