@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FLOTA DAG — Panel de gestión</title>
+  <title>Rentway — Catálogo de modelos</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
+
 <body>
 
   <header class="header">
@@ -13,81 +15,76 @@
       <div class="brand">
         <div class="brand-logo">🚗</div>
         <div>
-          <h1>FLOTA DAG</h1>
-          <p class="brand-sub">Panel de gestión de vehículos</p>
+          <h1>Rentway Canary Islands</h1>
+          <p class="brand-sub">Catálogo de modelos</p>
         </div>
       </div>
 
       <div class="header-actions">
         <button id="btn-xml" class="btn btn-primary">Generar XML</button>
         <button id="btn-copy-urls" class="btn btn-ghost">Copiar URLs</button>
+        <button id="btn-calc-price" class="btn" disabled>Calcular precio/día</button>
       </div>
     </div>
   </header>
 
   <main class="main">
 
-    <!-- KPIs -->
     <section class="kpis">
       <div class="kpi">
-        <span class="kpi-label">Total vehículos</span>
+        <span class="kpi-label">Total modelos</span>
         <span class="kpi-value" id="kpi-total">—</span>
       </div>
       <div class="kpi">
-        <span class="kpi-label">Disponibles</span>
-        <span class="kpi-value" id="kpi-disponibles">—</span>
+        <span class="kpi-label">Categorías</span>
+        <span class="kpi-value" id="kpi-categorias">—</span>
       </div>
       <div class="kpi">
-        <span class="kpi-label">Reservados</span>
-        <span class="kpi-value" id="kpi-reservados">—</span>
+        <span class="kpi-label">Especiales</span>
+        <span class="kpi-value" id="kpi-especial">—</span>
       </div>
       <div class="kpi">
-        <span class="kpi-label">Vendidos</span>
-        <span class="kpi-value" id="kpi-vendidos">—</span>
+        <span class="kpi-label">No especiales</span>
+        <span class="kpi-value" id="kpi-no-especial">—</span>
       </div>
     </section>
 
-    <!-- Filtros -->
+    <section class="selection-bar">
+      <div class="selection-info">
+        <span id="selection-count">0</span> de <span id="selection-total">0</span> seleccionados
+      </div>
+      <div class="selection-actions">
+        <button id="btn-select-all" class="btn-link">Seleccionar todos</button>
+        <button id="btn-select-visible" class="btn-link">Seleccionar visibles</button>
+        <button id="btn-select-none" class="btn-link">Limpiar selección</button>
+      </div>
+    </section>
+
     <section class="filters">
-      <input
-        type="search"
-        id="filter-search"
-        class="input"
-        placeholder="Buscar por marca, modelo, matrícula..."
-      />
-      <select id="filter-estado" class="select">
-        <option value="">Todos los estados</option>
-        <option value="disponible">Disponibles</option>
-        <option value="reservado">Reservados</option>
-        <option value="vendido">Vendidos</option>
+      <input type="search" id="filter-search" class="input" placeholder="Buscar por marca, modelo, grupo, SIPP..." />
+      <select id="filter-categoria" class="select">
+        <option value="">Todas las categorías</option>
       </select>
-      <select id="filter-combustible" class="select">
-        <option value="">Todos los combustibles</option>
-        <option value="Gasolina">Gasolina</option>
-        <option value="Diésel">Diésel</option>
-        <option value="Híbrido">Híbrido</option>
-        <option value="Eléctrico">Eléctrico</option>
+      <select id="filter-tipo" class="select">
+        <option value="">Todos los tipos</option>
+        <option value="ESPECIAL">Especial</option>
+        <option value="NO ESPECIAL">No especial</option>
       </select>
     </section>
 
-    <!-- Grid de vehículos -->
-    <section id="fleet-grid" class="grid">
-      <!-- Las tarjetas se inyectan desde app.js -->
-    </section>
+    <section id="fleet-grid" class="grid"></section>
 
-    <!-- Estado vacío -->
     <section id="empty-state" class="empty hidden">
-      <p>No hay vehículos que coincidan con los filtros.</p>
+      <p>No hay modelos que coincidan con los filtros.</p>
     </section>
 
   </main>
 
-  <!-- Modal para mostrar el XML -->
   <div id="xml-modal" class="modal hidden">
     <div class="modal-backdrop" data-close></div>
     <div class="modal-content">
       <div class="modal-header">
-        <h2>XML generado</h2>
+        <h2>XML generado <span id="xml-count" class="xml-count"></span></h2>
         <button class="modal-close" data-close>✕</button>
       </div>
       <div class="modal-body">
@@ -100,13 +97,87 @@
     </div>
   </div>
 
-  <!-- Toast de notificación -->
   <div id="toast" class="toast hidden"></div>
 
   <footer class="footer">
-    <p>FLOTA DAG · Las Palmas de Gran Canaria · <span id="footer-year"></span></p>
+    <p>Rentway Canary Islands · Las Palmas de Gran Canaria · <span id="footer-year"></span></p>
   </footer>
 
   <script src="js/app.js"></script>
+  <div id="price-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Calculador de Tarifas en Vivo</h2>
+        <button class="modal-close" data-close-price>&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="price-target-info" class="text-muted"></p>
+
+        <div class="form-grid" style="display: grid; gap: 1rem; margin-top: 1rem;">
+          <div>
+            <label>Tarifa (Rate Code)</label>
+            <input type="text" id="calc-rate" value="WEB" placeholder="Ej: WEB, RETAIL...">
+          </div>
+          <div>
+            <label>Fecha Recogida</label>
+            <input type="date" id="calc-pickup-date">
+          </div>
+          <div>
+            <label>Fecha Devolución</label>
+            <input type="date" id="calc-dropoff-date">
+          </div>
+          <div>
+            <label>Estación (ID)</label>
+            <input type="text" id="calc-station" value="1" placeholder="Ej: 1">
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+          <button id="btn-execute-calc" class="btn btn-primary">Solicitar Precios a Rentway</button>
+        </div>
+
+        <div id="price-results" style="margin-top: 1.5rem; display: none;">
+          <hr style="border: 0; border-top: 1px solid #3f3f46; margin-bottom: 1.5rem;">
+          <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.2rem; font-weight: 600;">Resumen de la Cotización
+          </h3>
+
+          <div class="result-card"
+            style="background: #1e1e2f; border: 1px solid #3f3f46; border-radius: 12px; padding: 1.5rem; color: #fff;">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3f3f46; padding-bottom: 1rem; margin-bottom: 1rem;">
+              <div>
+                <h4 id="res-model-name" style="margin: 0; font-size: 1.2rem; color: #60a5fa;">—</h4>
+                <p id="res-dates" style="margin: 0.2rem 0 0 0; font-size: 0.9rem; color: #9ca3af;">Fechas: —</p>
+              </div>
+              <div style="text-align: right;">
+                <span id="res-rate-badge"
+                  style="background: #2563eb; color: #fff; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">—</span>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; font-size: 1rem;">
+                <span style="color: #9ca3af;">Días totales:</span>
+                <span id="res-total-days" style="font-weight: 600;">—</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 1rem;">
+                <span style="color: #9ca3af;">Precio por día:</span>
+                <span id="res-price-day" style="font-weight: 600; color: #34d399;">—</span>
+              </div>
+              <div
+                style="display: flex; justify-content: space-between; font-size: 1.3rem; border-top: 1px dashed #3f3f46; padding-top: 0.75rem; margin-top: 0.25rem;">
+                <span style="font-weight: bold; color: #fff;">PRECIO TOTAL:</span>
+                <span id="res-price-total" style="font-weight: bold; color: #34d399;">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="price-status-message"
+          style="margin-top: 1.5rem; padding: 1rem; border-radius: 8px; display: none; font-size: 0.95rem;"></div>
+      </div>
+    </div>
+  </div>
 </body>
+
 </html>
