@@ -399,6 +399,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const btnExec = document.getElementById("btn-execute-calc");
   if (btnExec) btnExec.addEventListener("click", executePriceCalculation);
+
+  // Auto-rellenar tarifa según la oficina seleccionada
+  const stationSelect = document.getElementById("calc-station");
+  const rateInput = document.getElementById("calc-rate");
+  const stationsWithoutRate = ["GMZ", "GOO"];
+
+  const updateRateFromStation = () => {
+    const st = stationSelect.value;
+    rateInput.value = stationsWithoutRate.includes(st) ? "" : "AG1" + st;
+  };
+
+  if (stationSelect && rateInput) {
+    stationSelect.addEventListener("change", updateRateFromStation);
+    updateRateFromStation(); // aplicar al cargar el modal
+  }
 });
 
 // Sobrescribir updateSelectionUI para que también controle el botón de calcular
@@ -432,6 +447,14 @@ function openPriceModal() {
 
   document.getElementById("price-results").style.display = "none";
   document.getElementById("price-modal").classList.remove("hidden");
+
+  // Sincronizar tarifa con la oficina seleccionada al abrir
+  const st = document.getElementById("calc-station")?.value;
+  const rateEl = document.getElementById("calc-rate");
+  if (st && rateEl) {
+    const noRate = ["GMZ", "GOO"];
+    rateEl.value = noRate.includes(st) ? "" : "AG1" + st;
+  }
 }
 
 async function executePriceCalculation() {
