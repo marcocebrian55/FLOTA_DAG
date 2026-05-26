@@ -211,6 +211,7 @@
     <li><a href="#resultado">Resultado final y funcionamiento</a></li>
     <li><a href="#preguntas">Preguntas clave sobre el sistema</a></li>
     <li><a href="#escalabilidad">Escalabilidad: multi-proveedor y futuro</a></li>
+    <li><a href="#chatbot">Proyecto futuro: Chatbot de IA para consulta de precios</a></li>
     <li><a href="#tarifas">Anexo: Tarifas y estaciones disponibles</a></li>
   </ol>
 </div>
@@ -635,9 +636,92 @@ const xml = parser.parseFromString(responseText, ...);</pre></td>
   </table>
 </section>
 
-<!-- 10. ANEXO -->
+<!-- 10. CHATBOT IA -->
+<section id="chatbot">
+  <h2 class="section-title">10. Proyecto futuro: Chatbot de IA para consulta de precios</h2>
+
+  <p>Una de las mejoras más significativas para el contact center sería integrar un <strong>asistente de IA conversacional</strong> directamente en la herramienta. En lugar de seleccionar el modelo manualmente, abrir el modal y rellenar los campos uno a uno, la agente simplemente escribiría una frase en lenguaje natural y la herramienta se encargaría del resto.</p>
+
+  <div class="box box-info">
+    <div class="box-title">Ejemplo de uso</div>
+    La agente escribe: <em>"¿Cuál es el precio de un T-Roc del 28 de mayo al 1 de junio en Tenerife Sur?"</em><br><br>
+    El chatbot detecta: modelo → T-Roc (grupo SJ4) · fechas → 28/05 al 01/06 · oficina → TFS<br>
+    Resultado: el calculador se abre automáticamente con todos los campos rellenos y lanza la consulta a Rentway.
+  </div>
+
+  <h3>¿Cómo funcionaría técnicamente?</h3>
+
+  <div class="diagram">
+    [Agente escribe en lenguaje natural]<br>
+    &nbsp;&nbsp;<span class="arrow">↓</span> texto enviado al API de Claude (Anthropic) o GPT (OpenAI)<br>
+    [LLM extrae: modelo · fechas · oficina]<br>
+    &nbsp;&nbsp;<span class="arrow">↓</span> respuesta JSON estructurada<br>
+    [JS mapea modelo → groupID de Rentway]<br>
+    &nbsp;&nbsp;<span class="arrow">↓</span> rellena el formulario automáticamente<br>
+    [Se lanza executePriceCalculation()]<br>
+    &nbsp;&nbsp;<span class="arrow">↓</span><br>
+    <span class="ok">[Precio en pantalla en 2–3 segundos]</span>
+  </div>
+
+  <h3>Fases de implementación</h3>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Entrada de texto libre en la interfaz</h3>
+        <p>Añadir un campo de texto tipo chat en la barra principal o como panel lateral. La agente describe la consulta en lenguaje natural, igual que lo haría hablando con un compañero.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Extracción de entidades con IA</h3>
+        <p>El texto se envía al API de Claude (Anthropic) o GPT (OpenAI) con un prompt de sistema que le instruye a extraer modelo de vehículo, fechas de recogida y devolución, y oficina. La respuesta llega en formato JSON estructurado:</p>
+        <pre>{ "modelo": "T-Roc", "recogida": "2026-05-28", "devolucion": "2026-06-01", "oficina": "TFS" }</pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Mapeo de modelo a groupID de Rentway</h3>
+        <p>El nombre del modelo ("T-Roc") se compara contra el catálogo de la herramienta para obtener el <code>groupID</code> correspondiente (por ejemplo, "SJ4"). Esta tabla de correspondencias ya existe en el código actual.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Auto-relleno y ejecución</h3>
+        <p>El sistema rellena automáticamente los campos del calculador (fecha recogida, fecha devolución, oficina, tarifa) y ejecuta la consulta a Rentway. El modal de precio aparece con el resultado en 2–3 segundos.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Consideraciones técnicas</h3>
+
+  <table>
+    <tr><th>Aspecto</th><th>Detalle</th></tr>
+    <tr><td>Modelo de IA recomendado</td><td>Claude Haiku (Anthropic) o GPT-4o-mini (OpenAI) — modelos rápidos y económicos para extracción de datos</td></tr>
+    <tr><td>Coste estimado</td><td>Menos de 0,001 € por consulta — prácticamente gratuito a volúmenes de contact center</td></tr>
+    <tr><td>API key</td><td>Requiere una API key de Anthropic u OpenAI. Puede almacenarse en un nuevo Cloudflare Worker para no exponerla en el frontend</td></tr>
+    <tr><td>Idiomas</td><td>Los modelos actuales entienden español con total fiabilidad, incluyendo fechas en formato natural ("mañana", "el viernes que viene", "del 5 al 12 de julio")</td></tr>
+    <tr><td>Fallback</td><td>Si la IA no puede extraer todos los campos, el formulario se abre pre-rellenado con lo que sí detectó y la agente completa el resto manualmente</td></tr>
+  </table>
+
+  <div class="box box-success">
+    <div class="box-title">Viabilidad</div>
+    Esta funcionalidad es técnicamente sencilla de implementar sobre la base actual. La herramienta ya tiene toda la lógica de consulta de precios funcionando. El chatbot sería una capa de entrada adicional que reemplaza la selección manual por comprensión del lenguaje natural. Estimación de desarrollo: 1–2 días de trabajo.
+  </div>
+
+  <div class="box box-warn">
+    <div class="box-title">Nota sobre privacidad</div>
+    Las consultas al API de IA solo contendrían el texto de la pregunta (modelo, fechas, oficina). No se enviaría ningún dato de cliente ni información confidencial de Rentway. El texto es equivalente a lo que la agente ya diría en voz alta durante la llamada.
+  </div>
+</section>
+
+<!-- 11. ANEXO -->
 <section id="tarifas">
-  <h2 class="section-title">10. Anexo: Tarifas y estaciones disponibles</h2>
+  <h2 class="section-title">11. Anexo: Tarifas y estaciones disponibles</h2>
 
   <h3>Grupos de vehículos Rentway Canarias</h3>
   <table>
