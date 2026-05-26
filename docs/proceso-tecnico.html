@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proceso Técnico — Herramienta de Consulta de Precios Rentway</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #1a1a2e;
+      background: #fff;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 56px;
+    }
+
+    /* PORTADA */
+    .cover {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-bottom: 3px solid #7c6eec;
+      padding-bottom: 60px;
+      margin-bottom: 60px;
+      page-break-after: always;
+    }
+    .cover-logo {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #7c6eec;
+      margin-bottom: 48px;
+    }
+    .cover h1 {
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1.2;
+      color: #0f0f1a;
+      margin-bottom: 18px;
+    }
+    .cover h1 span { color: #7c6eec; }
+    .cover .subtitle {
+      font-size: 16px;
+      color: #555;
+      margin-bottom: 48px;
+      max-width: 600px;
+    }
+    .cover-meta { display: flex; gap: 48px; }
+    .cover-meta div { }
+    .cover-meta .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; }
+    .cover-meta .value { font-size: 14px; font-weight: 600; color: #1a1a2e; margin-top: 4px; }
+
+    /* ÍNDICE */
+    .toc { page-break-after: always; margin-bottom: 60px; }
+    .toc h2 { font-size: 18px; margin-bottom: 24px; color: #7c6eec; }
+    .toc ol { padding-left: 20px; }
+    .toc li { margin-bottom: 8px; font-size: 13px; }
+    .toc li a { color: #1a1a2e; text-decoration: none; }
+
+    /* SECCIONES */
+    section { margin-bottom: 48px; page-break-inside: avoid; }
+    h2.section-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #7c6eec;
+      border-bottom: 2px solid #ece9ff;
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+    h3 { font-size: 14px; font-weight: 700; color: #1a1a2e; margin: 20px 0 8px; }
+    p { margin-bottom: 12px; color: #333; }
+
+    /* CAJAS */
+    .box {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+    }
+    .box-info { background: #f0eeff; border-left: 4px solid #7c6eec; }
+    .box-error { background: #fff0f0; border-left: 4px solid #e05555; }
+    .box-success { background: #f0fff4; border-left: 4px solid #22c55e; }
+    .box-warn { background: #fffbeb; border-left: 4px solid #f59e0b; }
+    .box-title { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .box-info .box-title { color: #7c6eec; }
+    .box-error .box-title { color: #e05555; }
+    .box-success .box-title { color: #16a34a; }
+    .box-warn .box-title { color: #d97706; }
+
+    /* CÓDIGO */
+    pre, code {
+      font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+      font-size: 11.5px;
+      background: #f4f4f8;
+      border-radius: 5px;
+    }
+    pre {
+      padding: 14px 16px;
+      margin: 12px 0;
+      overflow-x: auto;
+      border: 1px solid #e0e0ec;
+      line-height: 1.5;
+    }
+    code { padding: 1px 5px; }
+
+    /* TABLA */
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px; }
+    th { background: #7c6eec; color: white; padding: 9px 12px; text-align: left; font-weight: 600; }
+    td { padding: 8px 12px; border-bottom: 1px solid #ece9ff; vertical-align: top; }
+    tr:nth-child(even) td { background: #faf9ff; }
+
+    /* PASOS */
+    .steps { counter-reset: step; }
+    .step {
+      counter-increment: step;
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      page-break-inside: avoid;
+    }
+    .step-num {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      background: #7c6eec;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .step-body h3 { margin-top: 4px; }
+
+    /* DIAGRAMA TEXTO */
+    .diagram {
+      background: #0f0f1a;
+      color: #a9c0ff;
+      border-radius: 8px;
+      padding: 18px 20px;
+      font-family: monospace;
+      font-size: 11.5px;
+      line-height: 1.8;
+      margin: 16px 0;
+    }
+    .diagram .arrow { color: #7c6eec; }
+    .diagram .ok { color: #4ade80; }
+    .diagram .err { color: #f87171; }
+
+    /* FOOTER */
+    footer {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid #ece9ff;
+      font-size: 11px;
+      color: #999;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    @media print {
+      body { padding: 24px 32px; }
+      .cover { min-height: auto; padding-bottom: 40px; }
+      section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- PORTADA -->
+<div class="cover">
+  <div class="cover-logo">Marirrodriga S.L. — Documento Técnico</div>
+  <h1>Herramienta de Consulta de Precios en Tiempo Real para <span>Rentway Canary Islands</span></h1>
+  <p class="subtitle">Desarrollo de una herramienta web interna para que el contact center de Avis Canarias / Domingo Alonso Group pueda consultar precios reales del sistema Rentway (Jimpisoft) sin necesidad de crear reservas.</p>
+  <div class="cover-meta">
+    <div>
+      <div class="label">Cliente</div>
+      <div class="value">Avis Canarias / Domingo Alonso Group</div>
+    </div>
+    <div>
+      <div class="label">Desarrollado por</div>
+      <div class="value">Marirrodriga S.L.</div>
+    </div>
+    <div>
+      <div class="label">Fecha</div>
+      <div class="value">Mayo 2026</div>
+    </div>
+    <div>
+      <div class="label">Sistema</div>
+      <div class="value">Rentway / Jimpisoft SOAP API</div>
+    </div>
+  </div>
+</div>
+
+<!-- ÍNDICE -->
+<div class="toc">
+  <h2>Índice</h2>
+  <ol>
+    <li><a href="#contexto">Contexto y objetivo</a></li>
+    <li><a href="#arquitectura">Arquitectura de la solución</a></li>
+    <li><a href="#cors">El problema CORS y la red corporativa</a></li>
+    <li><a href="#soap">Análisis del API SOAP de Rentway</a></li>
+    <li><a href="#bugs">Los 5 bugs identificados y cómo se resolvieron</a></li>
+    <li><a href="#estaciones">Descubrimiento de estaciones y tarifas</a></li>
+    <li><a href="#resultado">Resultado final y funcionamiento</a></li>
+    <li><a href="#preguntas">Preguntas clave sobre el sistema</a></li>
+    <li><a href="#escalabilidad">Escalabilidad: multi-proveedor y futuro</a></li>
+    <li><a href="#tarifas">Anexo: Tarifas y estaciones disponibles</a></li>
+  </ol>
+</div>
+
+<!-- 1. CONTEXTO -->
+<section id="contexto">
+  <h2 class="section-title">1. Contexto y objetivo</h2>
+
+  <p>Avis Canarias, empresa del grupo Domingo Alonso, opera con el sistema de gestión de alquiler de vehículos <strong>Rentway</strong>, desarrollado por Jimpisoft. Este sistema centraliza reservas, contratos, tarifas y flota para todas sus oficinas en las Islas Canarias.</p>
+
+  <p>El <strong>contact center</strong> de Avis Canarias atiende consultas de clientes sobre precios de alquiler. Hasta ahora, para conocer el precio de un modelo concreto en unas fechas específicas, los agentes debían iniciar el proceso de reserva completo en Rentway — ocupando tiempo y generando ruido en el sistema.</p>
+
+  <div class="box box-info">
+    <div class="box-title">Objetivo del proyecto</div>
+    Desarrollar una herramienta web interna, de acceso rápido y sin instalación, que permita a cualquier agente del contact center consultar el precio de alquiler de un modelo de vehículo para unas fechas y oficina determinadas — <strong>en tiempo real y sin crear ninguna reserva</strong>.
+  </div>
+
+  <h3>¿Qué hace exactamente la herramienta?</h3>
+  <ul style="padding-left: 20px; margin-bottom: 12px;">
+    <li>Muestra el catálogo completo de 27 modelos de la flota Rentway Canarias</li>
+    <li>Permite seleccionar un modelo, unas fechas y una oficina</li>
+    <li>Consulta el precio en tiempo real directamente al sistema Rentway</li>
+    <li>Muestra precio por día y total con IGIC incluido</li>
+    <li>No genera ninguna reserva ni compromete disponibilidad</li>
+  </ul>
+
+  <div class="box box-success">
+    <div class="box-title">Confirmado por el API</div>
+    El endpoint utilizado (<code>getMultiplePrices</code>) es una operación de <strong>solo lectura</strong>. No crea reservas, no bloquea disponibilidad, no modifica ningún dato en Rentway. Es exactamente la operación correcta para consultas de precio desde un contact center.
+  </div>
+</section>
+
+<!-- 2. ARQUITECTURA -->
+<section id="arquitectura">
+  <h2 class="section-title">2. Arquitectura de la solución</h2>
+
+  <p>La solución es una aplicación web estática (HTML + CSS + JavaScript puro) desplegada en GitHub Pages, sin servidor propio. Para comunicarse con el API SOAP de Jimpisoft, necesita un proxy intermedio que resuelva las restricciones CORS del navegador.</p>
+
+  <div class="diagram">
+    [Navegador del agente]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">↓</span> petición fetch()<br>
+    [Cloudflare Worker — proxy CORS]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">↓</span> SOAP 1.2 POST<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ws-soap-api.jimpisoft.com]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">↓</span> respuesta XML<br>
+    [Cloudflare Worker añade cabecera CORS]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">↓</span> XML parseado en el navegador<br>
+    [Resultado en pantalla: precio/día · total · días]
+  </div>
+
+  <table>
+    <tr><th>Componente</th><th>Tecnología</th><th>Función</th></tr>
+    <tr><td>Interfaz web</td><td>HTML / CSS / JS vanilla</td><td>Catálogo de modelos + calculador de tarifas</td></tr>
+    <tr><td>Hosting</td><td>GitHub Pages</td><td>Despliegue gratuito, sin servidor</td></tr>
+    <tr><td>Proxy CORS</td><td>Cloudflare Workers</td><td>Reenvía peticiones SOAP añadiendo cabeceras CORS</td></tr>
+    <tr><td>API de precios</td><td>Jimpisoft SOAP 1.2</td><td>Devuelve precios reales de Rentway en tiempo real</td></tr>
+  </table>
+</section>
+
+<!-- 3. CORS -->
+<section id="cors">
+  <h2 class="section-title">3. El problema CORS y la red corporativa</h2>
+
+  <h3>¿Qué es CORS?</h3>
+  <p>CORS (Cross-Origin Resource Sharing) es una política de seguridad de los navegadores. Cuando una página web en <code>dominio-A.com</code> intenta hacer una petición HTTP a <code>dominio-B.com</code>, el navegador la bloquea automáticamente a menos que el servidor de destino indique explícitamente que lo permite.</p>
+
+  <p>En nuestro caso: la web en <code>marcocebrian55.github.io</code> intentaba hacer un POST a <code>ws-soap-api.jimpisoft.com</code>. El servidor de Jimpisoft no incluye las cabeceras CORS necesarias, por lo que el navegador bloqueaba todas las peticiones.</p>
+
+  <div class="box box-error">
+    <div class="box-title">Error en consola del navegador</div>
+    <code>Access to fetch at 'https://ws-soap-api.jimpisoft.com/...' from origin 'https://marcocebrian55.github.io' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.</code>
+  </div>
+
+  <h3>Solución: Cloudflare Worker como proxy</h3>
+  <p>Se creó un Cloudflare Worker — un script que corre en los servidores de Cloudflare, no en el navegador — que actúa como intermediario. El navegador hace la petición al Worker (que sí permite CORS), y el Worker reenvía la petición a Jimpisoft y devuelve la respuesta con las cabeceras correctas.</p>
+
+  <div class="box box-warn">
+    <div class="box-title">Complicación: Firewall corporativo de Domingo Alonso</div>
+    La red corporativa de Domingo Alonso aplica una política de inspección SSL (Deep Packet Inspection) que bloqueaba tanto las peticiones directas a Jimpisoft como las peticiones a Cloudflare Workers. La solución para uso en oficina: <strong>hotspot de datos móviles</strong> o acceso desde red externa (casa, etc.). Fuera de la red corporativa, el proxy Cloudflare funciona directamente sin ninguna extensión.
+  </div>
+
+  <h3>Código del Cloudflare Worker</h3>
+  <pre>addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request));
+});
+
+async function handleRequest(request) {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, SOAPAction',
+  };
+
+  if (request.method === 'OPTIONS')
+    return new Response(null, { headers: corsHeaders });
+
+  const url = 'https://ws-soap-api.jimpisoft.com/getMultiplePrices.asmx';
+  const body = await request.text();
+
+  const upstream = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/xml; charset=utf-8',
+      'SOAPAction': '"http://www.jimpisoft.pt/Rentway_Reservations_WS/getMultiplePrices/MultiplePrices"',
+    },
+    body: body,
+  });
+
+  const text = await upstream.text();
+  return new Response(text, {
+    status: upstream.status,
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
+}</pre>
+</section>
+
+<!-- 4. SOAP -->
+<section id="soap">
+  <h2 class="section-title">4. Análisis del API SOAP de Rentway</h2>
+
+  <p>Rentway expone sus servicios a través de un <strong>API SOAP 1.2</strong> (Simple Object Access Protocol). A diferencia de los APIs REST modernos (que usan JSON), SOAP usa XML estructurado según unas reglas muy estrictas. Cualquier error en la estructura del XML — un campo mal nombrado, un namespace incorrecto — provoca error en el servidor sin dar información útil.</p>
+
+  <h3>Descubrimiento del contrato: el WSDL</h3>
+  <p>Los APIs SOAP publican un documento WSDL (Web Services Description Language) que describe exactamente cómo estructurar las peticiones: qué namespace usar, qué se llama cada operación, qué campos son obligatorios, etc.</p>
+  <p>URL del WSDL de Jimpisoft: <code>https://ws-soap-api.jimpisoft.com/getMultiplePrices.asmx?WSDL</code></p>
+
+  <div class="box box-info">
+    <div class="box-title">Estructura de una petición SOAP correcta</div>
+    <pre style="margin-top: 8px;">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;soap:Envelope
+  xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+  xmlns:tns="http://www.jimpisoft.pt/Rentway_Reservations_WS/getMultiplePrices"&gt;
+  &lt;soap:Header/&gt;
+  &lt;soap:Body&gt;
+    &lt;tns:MultiplePrices&gt;
+      &lt;tns:objRequest&gt;
+        &lt;tns:companyCode&gt;200037&lt;/tns:companyCode&gt;
+        &lt;tns:customerCode&gt;18&lt;/tns:customerCode&gt;
+        &lt;tns:username&gt;Booking&lt;/tns:username&gt;
+        &lt;tns:password&gt;···&lt;/tns:password&gt;
+        &lt;tns:groupID&gt;SC&lt;/tns:groupID&gt;
+        &lt;tns:rateCode&gt;AG1LPA&lt;/tns:rateCode&gt;
+        &lt;tns:pickUp&gt;
+          &lt;tns:Date&gt;2026-06-10T10:00:00&lt;/tns:Date&gt;
+          &lt;tns:rentalStation&gt;LPA&lt;/tns:rentalStation&gt;
+        &lt;/tns:pickUp&gt;
+        &lt;tns:dropOff&gt;
+          &lt;tns:Date&gt;2026-06-14T10:00:00&lt;/tns:Date&gt;
+          &lt;tns:rentalStation&gt;LPA&lt;/tns:rentalStation&gt;
+        &lt;/tns:dropOff&gt;
+      &lt;/tns:objRequest&gt;
+    &lt;/tns:MultiplePrices&gt;
+  &lt;/soap:Body&gt;
+&lt;/soap:Envelope&gt;</pre>
+  </div>
+
+  <h3>Formato de la respuesta</h3>
+  <p>Jimpisoft responde con un XML de tipo <strong>ADO.NET DataSet diffgram</strong>, formato propio de aplicaciones .NET. Los datos reales están dentro del bloque <code>&lt;diffgr:diffgram&gt;</code> dentro del elemento <code>&lt;MultiplePrices&gt;</code>. Los campos de precio relevantes son:</p>
+
+  <table>
+    <tr><th>Campo XML</th><th>Significado</th></tr>
+    <tr><td><code>totalDayValueWithTax</code></td><td>Precio por día con IGIC incluido</td></tr>
+    <tr><td><code>previewValue</code></td><td>Precio total del alquiler (todos los días)</td></tr>
+    <tr><td><code>nrDays</code></td><td>Número de días calculados por el sistema</td></tr>
+    <tr><td><code>rateCode</code></td><td>Código de tarifa aplicado</td></tr>
+    <tr><td><code>stationID</code></td><td>ID de la oficina</td></tr>
+    <tr><td><code>group_Name</code></td><td>Nombre del grupo/categoría del vehículo</td></tr>
+    <tr><td><code>taxRate</code></td><td>Porcentaje de IGIC (15% en Canarias)</td></tr>
+    <tr><td><code>errorCode</code></td><td>Texto del error si la petición falla</td></tr>
+  </table>
+</section>
+
+<!-- 5. BUGS -->
+<section id="bugs">
+  <h2 class="section-title">5. Los 5 bugs identificados y cómo se resolvieron</h2>
+
+  <div class="steps">
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Double response.text() — el bug del precio 0€</h3>
+        <p>El código llamaba a <code>response.text()</code> dos veces sobre el mismo objeto de respuesta HTTP. En JavaScript, el stream de respuesta solo puede leerse una vez. La segunda llamada devuelve siempre una cadena vacía, por lo que el parser XML recibía un documento vacío y los precios eran siempre 0€.</p>
+        <table>
+          <tr><th>Antes (incorrecto)</th><th>Después (correcto)</th></tr>
+          <tr>
+            <td><pre style="margin:0">const responseText = await response.text();
+// stream ya consumido ↑
+const textData = await response.text();
+// textData siempre es ""
+const xml = parser.parseFromString(textData, ...);</pre></td>
+            <td><pre style="margin:0">const responseText = await response.text();
+// reusar la misma variable
+const xml = parser.parseFromString(responseText, ...);</pre></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>URL directa a Jimpisoft sin proxy</h3>
+        <p>La URL apuntaba directamente al servidor de Jimpisoft, lo que causaba el error CORS inmediato. Se redirigió al Cloudflare Worker y se corrigió el <code>Content-Type</code>.</p>
+        <table>
+          <tr><th>Antes</th><th>Después</th></tr>
+          <tr>
+            <td><code>ws-soap-api.jimpisoft.com/...</code><br><code>Content-Type: application/soap+xml</code></td>
+            <td><code>small-moon-0352.mcebrian-334.workers.dev</code><br><code>Content-Type: text/xml; charset=utf-8</code></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Credenciales incorrectas</h3>
+        <p>Se estaban usando credenciales de una empresa distinta (AurumCars). Las credenciales correctas para la compañía 200037 (Avis Canarias) se obtuvieron de la documentación interna del proyecto.</p>
+        <table>
+          <tr><th>Antes</th><th>Después</th></tr>
+          <tr>
+            <td><code>username: AurumCars</code><br><code>password: tMfNlAMHicvUM6a</code><br><em>(sin customerCode)</em></td>
+            <td><code>customerCode: 18</code><br><code>username: Booking</code><br><code>password: 0NPwqRKSNf47S6f</code></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Namespace y operación SOAP incorrectos</h3>
+        <p>El nombre de la operación y el namespace del XML estaban mal. El servidor respondía con error 500 "NullReferenceException" sin más información. Analizando el WSDL se encontraron los valores exactos correctos.</p>
+        <table>
+          <tr><th>Antes</th><th>Después</th></tr>
+          <tr>
+            <td><code>xmlns="http://www.jimpisoft.pt/Rentway_Reservations_WS/"</code><br><code>&lt;getMultiplePrices&gt;</code></td>
+            <td><code>xmlns:tns="http://www.jimpisoft.pt/Rentway_Reservations_WS/getMultiplePrices"</code><br><code>&lt;tns:MultiplePrices&gt;</code></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>Nombre de campo de estación incorrecto</h3>
+        <p>El campo de la estación de recogida se llamaba <code>Rental_Station</code> (con mayúscula y guión bajo) en el código, pero en el WSDL oficial se llama <code>rentalStation</code> (camelCase). Este error causaba el mensaje "ERROR: PICKUP STATION DOES NOT EXIST!" para cualquier oficina que se introdujera.</p>
+        <table>
+          <tr><th>Antes</th><th>Después</th></tr>
+          <tr>
+            <td><code>&lt;tns:Rental_Station&gt;LPA&lt;/tns:Rental_Station&gt;</code></td>
+            <td><code>&lt;tns:rentalStation&gt;LPA&lt;/tns:rentalStation&gt;</code></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- 6. ESTACIONES Y TARIFAS -->
+<section id="estaciones">
+  <h2 class="section-title">6. Descubrimiento de estaciones y tarifas</h2>
+
+  <h3>Códigos de oficina</h3>
+  <p>Los códigos de oficina se obtuvieron directamente desde el back-office de Rentway (sección Configuraciones Empresariales → Operaciones → Oficina). Las oficinas de Avis Canarias son:</p>
+
+  <table>
+    <tr><th>Código</th><th>Oficina</th></tr>
+    <tr><td><code>LPA</code></td><td>Gran Canaria — Aeropuerto</td></tr>
+    <tr><td><code>TFS</code></td><td>Tenerife Sur — Aeropuerto</td></tr>
+    <tr><td><code>TFN</code></td><td>Tenerife Norte — Aeropuerto</td></tr>
+    <tr><td><code>FUE</code></td><td>Fuerteventura — Aeropuerto</td></tr>
+    <tr><td><code>ACE</code></td><td>Lanzarote — Aeropuerto</td></tr>
+    <tr><td><code>SPC</code></td><td>La Palma — Aeropuerto</td></tr>
+    <tr><td><code>GMZ</code></td><td>La Gomera — Aeropuerto</td></tr>
+    <tr><td><code>GOO</code></td><td>La Gomera — Muelle</td></tr>
+    <tr><td><code>VDE</code></td><td>El Hierro — Aeropuerto</td></tr>
+  </table>
+
+  <h3>Tarifas disponibles</h3>
+  <p>Rentway tiene más de 200 códigos de tarifa registrados en el sistema. Tras tests exhaustivos contra el API, las únicas tarifas accesibles con las credenciales de este canal (<code>customerCode=18, Booking</code>) son las tarifas <strong>AG1 por oficina</strong>:</p>
+
+  <table>
+    <tr><th>Tarifa</th><th>Oficina</th><th>Estado</th><th>Ejemplo precio/día (Mini, 4 días)</th></tr>
+    <tr><td><code>AG1LPA</code></td><td>Gran Canaria Aeropuerto</td><td>✅ Activa</td><td>20,50 €</td></tr>
+    <tr><td><code>AG1TFS</code></td><td>Tenerife Sur</td><td>✅ Activa</td><td>23,50 €</td></tr>
+    <tr><td><code>AG1TFN</code></td><td>Tenerife Norte</td><td>✅ Activa</td><td>24,00 €</td></tr>
+    <tr><td><code>AG1FUE</code></td><td>Fuerteventura</td><td>✅ Activa</td><td>21,50 €</td></tr>
+    <tr><td><code>AG1ACE</code></td><td>Lanzarote</td><td>✅ Activa</td><td>22,50 €</td></tr>
+    <tr><td><code>AG1SPC</code></td><td>La Palma</td><td>✅ Activa</td><td>24,50 €</td></tr>
+    <tr><td><code>AG1VDE</code></td><td>El Hierro</td><td>✅ Activa</td><td>29,50 €</td></tr>
+    <tr><td>GMZ / GOO</td><td>La Gomera</td><td>⚠️ Sin tarifa AG1</td><td>—</td></tr>
+    <tr><td>ADTLPA, AGS4, ACD…</td><td>Todas</td><td>❌ Otro canal</td><td>Requieren customerCode distinto</td></tr>
+  </table>
+
+  <div class="box box-info">
+    <div class="box-title">¿Por qué solo funcionan las tarifas AG1?</div>
+    Rentway gestiona el acceso a tarifas por canal (customerCode). El usuario <code>Booking / customerCode 18</code> corresponde al canal de booking web de Avis, que tiene asignadas las tarifas AG1 por aeropuerto. Las tarifas corporativas (ACD, ACN), de agencia (AGS4, AGNS4) y "Avis Directo" (ADTxxx) pertenecen a otros canales con sus propias credenciales. <strong>No es un error — es el diseño de permisos de Rentway.</strong>
+  </div>
+</section>
+
+<!-- 7. RESULTADO FINAL -->
+<section id="resultado">
+  <h2 class="section-title">7. Resultado final y funcionamiento</h2>
+
+  <p>La herramienta está publicada en <strong>https://marcocebrian55.github.io/FLOTA_DAG/</strong> y funciona completamente. El flujo de uso para una agente del contact center es:</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Abrir la web e identificar el modelo</h3>
+        <p>El catálogo muestra los 27 modelos de la flota con imagen, categoría, grupo y código SIPP. La agente puede filtrar por categoría o buscar por nombre/marca.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Seleccionar el modelo y abrir el calculador</h3>
+        <p>Un clic en la tarjeta lo selecciona (tick azul). Con al menos un modelo seleccionado, se activa el botón "Calcular precio/día" en la barra superior.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Rellenar el formulario</h3>
+        <p>Se abre un modal con 3 campos: <strong>fecha de recogida</strong>, <strong>fecha de devolución</strong> y <strong>oficina</strong>. La tarifa se auto-rellena automáticamente según la oficina elegida (AG1 + código de oficina).</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Obtener el precio en tiempo real</h3>
+        <p>Al hacer clic en "Solicitar Precios a Rentway", la herramienta envía la consulta y muestra en segundos: precio por día (con IGIC), precio total, número de días y tarifa aplicada.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="box box-success">
+    <div class="box-title">Resultado confirmado en pruebas reales</div>
+    Volkswagen Polo · Gran Canaria Aeropuerto · 10–14 junio 2026 · Tarifa AG1LPA<br>
+    → <strong>22,50 € / día · 90,00 € total (4 días, IGIC 15% incluido)</strong>
+  </div>
+</section>
+
+<!-- PREGUNTAS CLAVE -->
+<section id="preguntas">
+  <h2 class="section-title">8. Preguntas clave sobre el sistema</h2>
+
+  <h3>¿Podría cada proveedor introducir su usuario y contraseña para ver sus tarifas propias?</h3>
+
+  <p>Sí, es totalmente posible. El API SOAP de Jimpisoft/Rentway acepta en cada petición los campos <code>companyCode</code>, <code>customerCode</code>, <code>username</code> y <code>password</code>. Esto significa que la herramienta puede ampliarse para que cada empresa del grupo (Avis, Budget, Cicar, u otras que operen en Rentway) tenga acceso a sus propias tarifas introduciendo sus credenciales específicas.</p>
+
+  <div class="box box-info">
+    <div class="box-title">Ejemplo práctico</div>
+    Si Budget tiene en Rentway un <code>companyCode</code> diferente y sus propias credenciales, podría ver sus tarifas de Budget (con sus grupos de vehículos propios, sus oficinas y sus precios específicos) sin que interfieran con las de Avis. Bastaría con añadir un selector de empresa en el formulario y mapear cada empresa a sus credenciales correspondientes.
+  </div>
+
+  <p>Lo que necesitaríamos para implementarlo:</p>
+  <ul style="padding-left: 20px; margin-bottom: 12px;">
+    <li>Obtener el <code>companyCode</code>, <code>customerCode</code>, <code>username</code> y <code>password</code> de Rentway para cada empresa</li>
+    <li>Añadir un selector de empresa en la interfaz</li>
+    <li>Adaptar el catálogo de flota a cada empresa (modelos, grupos, imágenes)</li>
+    <li>El proxy Cloudflare Worker y toda la lógica SOAP no necesitarían modificación</li>
+  </ul>
+
+  <div class="box box-success">
+    <div class="box-title">Conclusión</div>
+    Sí, es posible y no sería complejo de implementar. La arquitectura actual ya soporta multi-proveedor — solo habría que añadir la lógica de selección de empresa y sus credenciales correspondientes.
+  </div>
+
+  <h3 style="margin-top: 32px;">¿Esto resuelve el problema de conocer el precio sin tener que crear una reserva?</h3>
+
+  <p>Sí, y de hecho este es el objetivo principal para el que está diseñado el endpoint <code>getMultiplePrices</code>. Se trata de una operación de <strong>solo lectura</strong> en el sistema Rentway:</p>
+
+  <table>
+    <tr><th>Crear una reserva normal</th><th>getMultiplePrices (nuestra herramienta)</th></tr>
+    <tr><td>Genera un registro en Rentway</td><td>No crea ningún registro</td></tr>
+    <tr><td>Bloquea disponibilidad temporalmente</td><td>No toca la disponibilidad</td></tr>
+    <tr><td>Requiere datos del cliente (nombre, DNI…)</td><td>Solo necesita modelo, fechas y oficina</td></tr>
+    <tr><td>Hay que cancelarla si el cliente no confirma</td><td>No hay nada que cancelar</td></tr>
+    <tr><td>Proceso de 5–10 minutos para el agente</td><td>Respuesta en 2–3 segundos</td></tr>
+  </table>
+
+  <div class="box box-success">
+    <div class="box-title">Confirmado en pruebas</div>
+    Durante el desarrollo se realizaron decenas de consultas reales al sistema Rentway. Ninguna generó reservas ni registros en el back-office. La herramienta consulta y devuelve precios reales del sistema, pero <strong>sin ningún efecto secundario</strong>.
+  </div>
+
+  <p>Para el contact center esto supone un cambio significativo: en lugar de iniciar un proceso de reserva completo para informar de un precio al cliente (y luego cancelarlo si no confirma), la agente puede obtener el precio exacto en segundos, informar al cliente, y si confirma, entonces sí abrir el proceso de reserva real en Rentway.</p>
+</section>
+
+<!-- 9. ESCALABILIDAD -->
+<section id="escalabilidad">
+  <h2 class="section-title">9. Escalabilidad: multi-proveedor y futuro</h2>
+
+  <h3>¿Puede cada proveedor usar sus propias credenciales?</h3>
+  <p>Sí. El API SOAP de Jimpisoft acepta <code>companyCode</code>, <code>customerCode</code>, <code>username</code> y <code>password</code> en cada petición. Si otros proveedores del grupo (Budget, Cicar, u otros que operen en Rentway) tienen sus propias credenciales, la herramienta puede ampliarse con un selector de empresa. Cada empresa vería únicamente sus tarifas, modelos y oficinas propias.</p>
+
+  <h3>¿Qué requeriría esta ampliación?</h3>
+  <ul style="padding-left: 20px; margin-bottom: 12px;">
+    <li>Obtener los <code>companyCode</code> y credenciales de cada empresa en Rentway</li>
+    <li>Añadir un selector "Empresa" al formulario</li>
+    <li>Cargar el catálogo de flota correspondiente a cada empresa</li>
+    <li>El código SOAP y el proxy Cloudflare Worker no necesitarían modificación</li>
+  </ul>
+
+  <h3>Otras mejoras posibles</h3>
+  <table>
+    <tr><th>Mejora</th><th>Descripción</th><th>Complejidad</th></tr>
+    <tr><td>Multi-empresa</td><td>Selector de proveedor con credenciales propias</td><td>Baja</td></tr>
+    <tr><td>Comparativa de islas</td><td>Mostrar precio en todas las oficinas a la vez</td><td>Media</td></tr>
+    <tr><td>Exportar cotización</td><td>Generar PDF de la cotización para enviar al cliente</td><td>Media</td></tr>
+    <tr><td>Autenticación interna</td><td>Login para que solo accedan los agentes del contact center</td><td>Media</td></tr>
+    <tr><td>Historial de consultas</td><td>Registro de precios consultados por fecha</td><td>Alta</td></tr>
+  </table>
+</section>
+
+<!-- 10. ANEXO -->
+<section id="tarifas">
+  <h2 class="section-title">10. Anexo: Tarifas y estaciones disponibles</h2>
+
+  <h3>Grupos de vehículos Rentway Canarias</h3>
+  <table>
+    <tr><th>Grupo</th><th>Categoría</th><th>Ejemplo de modelo</th></tr>
+    <tr><td>SA</td><td>Mini</td><td>Hyundai i10</td></tr>
+    <tr><td>SC / SC1–SC3</td><td>Pequeño Económico 5p</td><td>Volkswagen Polo, Citroen C3</td></tr>
+    <tr><td>SG / SG1</td><td>Compacto 3/5p</td><td>Seat León, Opel Astra</td></tr>
+    <tr><td>SJ / SJ1–SJ4</td><td>Compacto 4p / SUV</td><td>Toyota Corolla, VW T-Roc</td></tr>
+    <tr><td>SK</td><td>Compacto Automático</td><td>Toyota Yaris Hybrid</td></tr>
+    <tr><td>MD / MC</td><td>SUV Automático</td><td>VW Touareg, Toyota RAV4</td></tr>
+    <tr><td>SM / MJ / MN</td><td>Minivan / Monovolumen</td><td>Volkswagen Caddy</td></tr>
+    <tr><td>LJ / LP / LO / LL</td><td>Lujo / Premium</td><td>Modelos premium</td></tr>
+    <tr><td>EG / EE</td><td>Eléctrico</td><td>Vehículos eléctricos</td></tr>
+  </table>
+</section>
+
+<footer>
+  <span>Marirrodriga S.L. — Documento confidencial de uso interno</span>
+  <span>Avis Canarias / Domingo Alonso Group — Mayo 2026</span>
+</footer>
+
+</body>
+</html>
