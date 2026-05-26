@@ -435,7 +435,7 @@ function openPriceModal() {
 }
 
 async function executePriceCalculation() {
-  const rateCode = document.getElementById("calc-rate").value || "WEB";
+  const rateCode = document.getElementById("calc-rate").value.trim();
   const pickupDate = document.getElementById("calc-pickup-date").value;
   const dropoffDate = document.getElementById("calc-dropoff-date").value;
   const station = document.getElementById("calc-station").value || "LPA";
@@ -472,7 +472,7 @@ async function executePriceCalculation() {
         <tns:username>Booking</tns:username>
         <tns:password>0NPwqRKSNf47S6f</tns:password>
         <tns:groupID>${grupoID}</tns:groupID>
-        <tns:rateCode>${rateCode}</tns:rateCode>
+        ${rateCode ? `<tns:rateCode>${rateCode}</tns:rateCode>` : ''}
         <tns:pickUp>
           <tns:Date>${pickupDate}T10:00:00</tns:Date>
           <tns:rentalStation>${station}</tns:rentalStation>
@@ -509,6 +509,8 @@ async function executePriceCalculation() {
         "ERROR: USER OR PASSWORD INCORRECT": "Credenciales incorrectas.",
         "ERROR: PICKUP DATE CANNOT BE LOWER THAN TODAY": "La fecha de recogida no puede ser anterior a hoy.",
         "ERROR: RATE CODE DOES NOT EXIST!": "El código de tarifa no existe.",
+        "ERROR: NO RATE IS AVAILABLE FOR YOUR SELECTION. ": "No hay tarifa disponible para esta selección. Deja el campo vacío para obtener la mejor tarifa.",
+        "ERROR: NO RATE IS AVAILABLE FOR YOUR SELECTION.": "No hay tarifa disponible para esta selección. Deja el campo vacío para obtener la mejor tarifa.",
       };
       const msg = mensajes[errorCode] || `Error Rentway: ${errorCode}`;
       statusMessage.style.display = "block";
