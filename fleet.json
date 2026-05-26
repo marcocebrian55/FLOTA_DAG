@@ -1,0 +1,64 @@
+{
+  "agencia": {
+    "nombre": "FLOTA DAG",
+    "telefono": "+34 928 000 000",
+    "email": "contacto@flotadag.com",
+    "ubicacion": "Las Palmas de Gran Canaria"
+  },
+  "vehiculos": [
+    {
+      "id": "FOC-001",
+      "matricula": "1234ABC",
+      "marca": "Ford",
+      "modelo": "Focus",
+      "version": "1.0 EcoBoost Titanium",
+      "anyo": 2022,
+      "km": 28500,
+      "combustible": "Gasolina",
+      "cambio": "Manual",
+      "categoria": "Compacto",
+      "puertas": 5,
+      "color": "Gris Magnético",
+      "precio": 16900,
+      "imagen": "images/ford_focus.jpg",
+      "estado": "disponible",
+      "descripcion": "Vehículo en perfecto estado, único propietario, libro de mantenimiento al día."
+    },
+    {
+      "id": "COR-001",
+      "matricula": "5678DEF",
+      "marca": "Opel",
+      "modelo": "Corsa",
+      "version": "1.2 Edition",
+      "anyo": 2021,
+      "km": 41200,
+      "combustible": "Gasolina",
+      "cambio": "Manual",
+      "categoria": "Urbano",
+      "puertas": 5,
+      "color": "Blanco",
+      "precio": 12500,
+      "imagen": "images/opel_corsa.jpg",
+      "estado": "disponible",
+      "descripcion": "Ideal ciudad, bajo consumo, garantía 12 meses."
+    },
+    {
+      "id": "MEG-001",
+      "matricula": "9012GHI",
+      "marca": "Renault",
+      "modelo": "Megane",
+      "version": "1.5 dCi Business",
+      "anyo": 2020,
+      "km": 78900,
+      "combustible": "Diésel",
+      "cambio": "Automático",
+      "categoria": "Compacto",
+      "puertas": 5,
+      "color": "Azul Cosmos",
+      "precio": 14200,
+      "imagen": "images/renault_megane.jpg",
+      "estado": "reservado",
+      "descripcion": "Equipamiento completo, ideal para profesionales."
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FLOTA DAG — Panel de gestión</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo">🚗</div>
+        <div>
+          <h1>FLOTA DAG</h1>
+          <p class="brand-sub">Panel de gestión de vehículos</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-xml" class="btn btn-primary">Generar XML</button>
+        <button id="btn-copy-urls" class="btn btn-ghost">Copiar URLs</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- KPIs -->
+    <section class="kpis">
+      <div class="kpi">
+        <span class="kpi-label">Total vehículos</span>
+        <span class="kpi-value" id="kpi-total">—</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Disponibles</span>
+        <span class="kpi-value" id="kpi-disponibles">—</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Reservados</span>
+        <span class="kpi-value" id="kpi-reservados">—</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Vendidos</span>
+        <span class="kpi-value" id="kpi-vendidos">—</span>
+      </div>
+    </section>
+
+    <!-- Filtros -->
+    <section class="filters">
+      <input
+        type="search"
+        id="filter-search"
+        class="input"
+        placeholder="Buscar por marca, modelo, matrícula..."
+      />
+      <select id="filter-estado" class="select">
+        <option value="">Todos los estados</option>
+        <option value="disponible">Disponibles</option>
+        <option value="reservado">Reservados</option>
+        <option value="vendido">Vendidos</option>
+      </select>
+      <select id="filter-combustible" class="select">
+        <option value="">Todos los combustibles</option>
+        <option value="Gasolina">Gasolina</option>
+        <option value="Diésel">Diésel</option>
+        <option value="Híbrido">Híbrido</option>
+        <option value="Eléctrico">Eléctrico</option>
+      </select>
+    </section>
+
+    <!-- Grid de vehículos -->
+    <section id="fleet-grid" class="grid">
+      <!-- Las tarjetas se inyectan desde app.js -->
+    </section>
+
+    <!-- Estado vacío -->
+    <section id="empty-state" class="empty hidden">
+      <p>No hay vehículos que coincidan con los filtros.</p>
+    </section>
+
+  </main>
+
+  <!-- Modal para mostrar el XML -->
+  <div id="xml-modal" class="modal hidden">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>XML generado</h2>
+        <button class="modal-close" data-close>✕</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="xml-output" readonly></textarea>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-copy-xml" class="btn btn-primary">Copiar al portapapeles</button>
+        <button id="btn-download-xml" class="btn btn-ghost">Descargar .xml</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast de notificación -->
+  <div id="toast" class="toast hidden"></div>
+
+  <footer class="footer">
+    <p>FLOTA DAG · Las Palmas de Gran Canaria · <span id="footer-year"></span></p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
