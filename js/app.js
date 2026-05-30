@@ -149,6 +149,7 @@ function cardTemplate(v) {
           <span class="tag">Grupo ${escapeHtml(v.grupo)}</span>
           <span class="tag">SIPP ${escapeHtml(v.sipp)}</span>
         </div>
+        <div class="card-price-slot" data-price-id="${escapeHtml(v.id)}">${priceBlockHtml(v.id)}</div>
         <div class="card-footer">
           <span class="card-matricula">${escapeHtml(v.id)}</span>
           <button class="card-url-btn" data-url="${escapeHtml(imageUrl || '')}" ${!imageUrl ? 'disabled' : ''}>
@@ -384,106 +385,119 @@ function bindEvents() {
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") closeXmlModal();
   });
-}// ============================================
-// Cotizador de Tarifas (SOAP Jimpisoft)
-// ============================================
-
-// Vincular eventos (puedes meter esto dentro de tu función bindEvents() actual)
-document.addEventListener("DOMContentLoaded", () => {
-  const btnCalc = document.getElementById("btn-calc-price");
-  if (btnCalc) btnCalc.addEventListener("click", openPriceModal);
-
-  document.querySelectorAll("[data-close-price]").forEach(el => {
-    el.addEventListener("click", () => document.getElementById("price-modal").classList.add("hidden"));
-  });
-
-  const btnExec = document.getElementById("btn-execute-calc");
-  if (btnExec) btnExec.addEventListener("click", executePriceCalculation);
-
-  // Auto-rellenar tarifa según la oficina seleccionada
-  const stationSelect = document.getElementById("calc-station");
-  const rateInput = document.getElementById("calc-rate");
-  const stationsWithoutRate = ["GMZ", "GOO"];
-
-  const updateRateFromStation = () => {
-    const st = stationSelect.value;
-    rateInput.value = stationsWithoutRate.includes(st) ? "" : "AG1" + st;
-  };
-
-  if (stationSelect && rateInput) {
-    stationSelect.addEventListener("change", updateRateFromStation);
-    updateRateFromStation(); // aplicar al cargar el modal
-  }
-});
-
-// Sobrescribir updateSelectionUI para que también controle el botón de calcular
-const originalUpdateSelectionUI = typeof updateSelectionUI === 'function' ? updateSelectionUI : null;
-window.updateSelectionUI = function () {
-  if (originalUpdateSelectionUI) originalUpdateSelectionUI();
-
-  const btnCalc = document.getElementById("btn-calc-price");
-  if (btnCalc) {
-    btnCalc.disabled = state.selected.size === 0;
-    btnCalc.classList.toggle("btn-disabled", state.selected.size === 0);
-  }
-};
-
-function openPriceModal() {
-  if (state.selected.size === 0) {
-    showToast("Selecciona al menos un modelo para calcular");
-    return;
-  }
-
-  document.getElementById("price-target-info").textContent =
-    `Consultando tarifas para ${state.selected.size} modelo(s) seleccionado(s).`;
-
-  // Poner fechas: Hoy y Mañana por defecto
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  document.getElementById("calc-pickup-date").value = today.toISOString().split('T')[0];
-  document.getElementById("calc-dropoff-date").value = tomorrow.toISOString().split('T')[0];
-
-  document.getElementById("price-results").style.display = "none";
-  document.getElementById("price-modal").classList.remove("hidden");
-
-  // Sincronizar tarifa con la oficina seleccionada al abrir
-  const st = document.getElementById("calc-station")?.value;
-  const rateEl = document.getElementById("calc-rate");
-  if (st && rateEl) {
-    const noRate = ["GMZ", "GOO"];
-    rateEl.value = noRate.includes(st) ? "" : "AG1" + st;
-  }
 }
 
-async function executePriceCalculation() {
-  const rateCode = document.getElementById("calc-rate").value.trim();
-  const pickupDate = document.getElementById("calc-pickup-date").value;
-  const dropoffDate = document.getElementById("calc-dropoff-date").value;
-  const station = document.getElementById("calc-station").value || "LPA";
+// ============================================
+// Cotizador multi-modelo (SOAP Jimpisoft)
+// ============================================
+const PRICE_WS_URL = "https://small-moon-0352.mcebrian-334.workers.dev";
+const STATIONS_WITHOUT_RATE = ["GMZ", "GOO"];
+const PRICE_CONCURRENCY = 4;
 
-  const resultsDiv = document.getElementById("price-results");
-  const statusMessage = document.getElementById("price-status-message");
+const RENTWAY_ERRORS = {
+  "ERROR: PICKUP STATION DOES NOT EXIST!": "La oficina de recogida no existe.",
+  "ERROR: USER OR PASSWORD INCORRECT": "Credenciales incorrectas.",
+  "ERROR: PICKUP DATE CANNOT BE LOWER THAN TODAY": "La recogida no puede ser anterior a hoy.",
+  "ERROR: RATE CODE DOES NOT EXIST!": "El código de tarifa no existe.",
+  "ERROR: NO RATE IS AVAILABLE FOR YOUR SELECTION. ": "Sin tarifa disponible para estas fechas.",
+  "ERROR: NO RATE IS AVAILABLE FOR YOUR SELECTION.": "Sin tarifa disponible para estas fechas."
+};
 
-  // Resetear estados visuales
-  resultsDiv.style.display = "none";
-  statusMessage.style.display = "block";
-  statusMessage.style.background = "#27272a";
-  statusMessage.style.color = "#e4e4e7";
-  statusMessage.textContent = "Conectando con la API de Rentway... Por favor, espera.";
+state.prices = {}; // id -> {loading} | {error} | {dailyValue, totalValue, days, rateCode}
 
-  if (state.selected.size === 0) {
-    statusMessage.style.background = "#7f1d1d";
-    statusMessage.textContent = "Error: No hay modelos seleccionados.";
+function rateForStation(station) {
+  return STATIONS_WITHOUT_RATE.includes(station) ? "" : "AG1" + station;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const iso = d => d.toISOString().split("T")[0];
+
+  const pickupEl = document.getElementById("q-pickup");
+  const dropoffEl = document.getElementById("q-dropoff");
+  const stationEl = document.getElementById("q-station");
+  const btn = document.getElementById("btn-get-prices");
+
+  if (pickupEl) { pickupEl.value = iso(today); pickupEl.min = iso(today); }
+  if (dropoffEl) { dropoffEl.value = iso(tomorrow); dropoffEl.min = iso(tomorrow); }
+  if (btn) btn.addEventListener("click", obtenerPrecios);
+
+  // Al cambiar fechas u oficina, los precios mostrados quedan obsoletos
+  [pickupEl, dropoffEl, stationEl].forEach(el => {
+    if (el) el.addEventListener("change", clearPrices);
+  });
+});
+
+function clearPrices() {
+  state.prices = {};
+  document.querySelectorAll(".card-price-slot").forEach(slot => { slot.innerHTML = ""; });
+}
+
+function priceBlockHtml(id) {
+  const p = state.prices[id];
+  if (!p) return "";
+  if (p.loading) return `<div class="card-price loading">Consultando precio…</div>`;
+  if (p.error) return `<div class="card-price error">${escapeHtml(p.error)}</div>`;
+  const fmt = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
+  const rate = p.rateCode ? ` · ${escapeHtml(p.rateCode)}` : "";
+  return `<div class="card-price">
+      <span class="price-day">${fmt.format(p.dailyValue)}<small>/día</small></span>
+      <span class="price-total">Total ${fmt.format(p.totalValue)} · ${p.days} ${p.days === 1 ? "día" : "días"}${rate}</span>
+    </div>`;
+}
+
+function updateCardPrice(id) {
+  const slot = document.querySelector(`.card-price-slot[data-price-id="${id}"]`);
+  if (slot) slot.innerHTML = priceBlockHtml(id);
+}
+
+async function obtenerPrecios() {
+  const pickupDate = document.getElementById("q-pickup").value;
+  const dropoffDate = document.getElementById("q-dropoff").value;
+  const station = document.getElementById("q-station").value || "LPA";
+
+  if (!pickupDate || !dropoffDate) { showToast("Indica fecha de recogida y devolución"); return; }
+  if (new Date(dropoffDate) <= new Date(pickupDate)) {
+    showToast("La devolución debe ser posterior a la recogida");
     return;
   }
 
-  // Conseguir datos del coche seleccionado para la interfaz
-  const seleccionados = state.vehiculos.filter(v => state.selected.has(v.id));
-  const coche = seleccionados[0];
-  const grupoID = coche.grupo;
+  // Modelos a cotizar: los seleccionados, o toda la flota si no hay selección
+  let targets = getSelectedVehicles();
+  if (targets.length === 0) targets = [...state.vehiculos];
 
+  const rateCode = rateForStation(station);
+
+  targets.forEach(v => { state.prices[v.id] = { loading: true }; updateCardPrice(v.id); });
+
+  const btn = document.getElementById("btn-get-prices");
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.classList.add("btn-disabled");
+  btn.textContent = "Consultando…";
+
+  await runPool(targets, PRICE_CONCURRENCY, async v => {
+    state.prices[v.id] = await fetchVehiclePrice(v, { pickupDate, dropoffDate, station, rateCode });
+    updateCardPrice(v.id);
+  });
+
+  btn.disabled = false;
+  btn.classList.remove("btn-disabled");
+  btn.textContent = label;
+  showToast(`Precios actualizados (${targets.length} ${targets.length === 1 ? "modelo" : "modelos"})`);
+}
+
+async function runPool(items, size, worker) {
+  const queue = [...items];
+  const runners = Array.from({ length: Math.min(size, queue.length) }, async () => {
+    while (queue.length) await worker(queue.shift());
+  });
+  await Promise.all(runners);
+}
+
+async function fetchVehiclePrice(v, { pickupDate, dropoffDate, station, rateCode }) {
   const soapRequest = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:tns="http://www.jimpisoft.pt/Rentway_Reservations_WS/getMultiplePrices">
   <soap:Header/>
@@ -494,8 +508,8 @@ async function executePriceCalculation() {
         <tns:customerCode>18</tns:customerCode>
         <tns:username>Booking</tns:username>
         <tns:password>0NPwqRKSNf47S6f</tns:password>
-        <tns:groupID>${grupoID}</tns:groupID>
-        ${rateCode ? `<tns:rateCode>${rateCode}</tns:rateCode>` : ''}
+        <tns:groupID>${v.grupo}</tns:groupID>
+        ${rateCode ? `<tns:rateCode>${rateCode}</tns:rateCode>` : ""}
         <tns:pickUp>
           <tns:Date>${pickupDate}T10:00:00</tns:Date>
           <tns:rentalStation>${station}</tns:rentalStation>
@@ -510,76 +524,31 @@ async function executePriceCalculation() {
 </soap:Envelope>`;
 
   try {
-    const wsUrl = "https://small-moon-0352.mcebrian-334.workers.dev";
-    const response = await fetch(wsUrl, {
+    const response = await fetch(PRICE_WS_URL, {
       method: "POST",
       cache: "no-store",
       headers: { "Content-Type": "text/xml; charset=utf-8" },
       body: soapRequest
     });
-    const responseText = await response.text();
-    console.log("RESPUESTA JIMPISOFT:", responseText);
+    const xmlDoc = new DOMParser().parseFromString(await response.text(), "text/xml");
 
-    // Parsear el XML recibido
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(responseText, "text/xml");
-
-    // Verificar si el propio servidor de Jimpisoft devolvió un error de negocio
     const errorCode = xmlDoc.querySelector("errorCode")?.textContent?.trim();
-    if (errorCode && errorCode !== "0" && errorCode !== "") {
-      const mensajes = {
-        "ERROR: PICKUP STATION DOES NOT EXIST!": "La estación de recogida no existe. Verifica el ID de oficina.",
-        "ERROR: USER OR PASSWORD INCORRECT": "Credenciales incorrectas.",
-        "ERROR: PICKUP DATE CANNOT BE LOWER THAN TODAY": "La fecha de recogida no puede ser anterior a hoy.",
-        "ERROR: RATE CODE DOES NOT EXIST!": "El código de tarifa no existe.",
-        "ERROR: NO RATE IS AVAILABLE FOR YOUR SELECTION. ": "No hay tarifa disponible para esta selección. Deja el campo vacío para obtener la mejor tarifa.",
-        "ERROR: NO RATE IS AVAILABLE FOR YOUR SELECTION.": "No hay tarifa disponible para esta selección. Deja el campo vacío para obtener la mejor tarifa.",
-      };
-      const msg = mensajes[errorCode] || `Error Rentway: ${errorCode}`;
-      statusMessage.style.display = "block";
-      statusMessage.style.background = "#7f1d1d";
-      statusMessage.style.color = "#fca5a5";
-      statusMessage.textContent = msg;
-      return;
+    if (errorCode && errorCode !== "0") {
+      return { error: RENTWAY_ERRORS[errorCode] || `Error: ${errorCode}` };
     }
 
-    // Extraer campos reales del diffgram de Rentway
-    const totalValueText    = xmlDoc.querySelector("previewValue")?.textContent || "0";
-    const dailyValueText    = xmlDoc.querySelector("totalDayValueWithTax")?.textContent || "0";
-    const daysText          = xmlDoc.querySelector("nrDays")?.textContent;
-    const actualRateCode    = xmlDoc.querySelector("rateCode")?.textContent || rateCode;
+    const totalValue = parseFloat(xmlDoc.querySelector("previewValue")?.textContent || "0") || 0;
+    if (!totalValue) return { error: "Sin tarifa disponible" };
 
-    const d1 = new Date(pickupDate);
-    const d2 = new Date(dropoffDate);
-    const calculatedDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) || 1;
-    const finalDays = daysText ? parseInt(daysText) : calculatedDays;
+    const daysText = xmlDoc.querySelector("nrDays")?.textContent;
+    const calcDays = Math.round((new Date(dropoffDate) - new Date(pickupDate)) / 86400000) || 1;
+    const days = daysText ? parseInt(daysText, 10) : calcDays;
+    const dailyValue = parseFloat(xmlDoc.querySelector("totalDayValueWithTax")?.textContent || "0") || (totalValue / days);
+    const actualRate = xmlDoc.querySelector("rateCode")?.textContent?.trim() || rateCode;
 
-    const totalValue = parseFloat(totalValueText) || 0;
-    const dailyValue = parseFloat(dailyValueText) || (totalValue / finalDays);
-
-    const currencyFormatter = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
-
-    // Pintar resultados
-    document.getElementById("res-model-name").textContent = coche.nombre_completo || `${coche.marca} ${coche.modelo}`;
-    document.getElementById("res-dates").textContent = `Del ${formatDateSpan(pickupDate)} al ${formatDateSpan(dropoffDate)}`;
-    document.getElementById("res-rate-badge").textContent = `Tarifa: ${actualRateCode}`;
-    document.getElementById("res-total-days").textContent = `${finalDays} ${finalDays === 1 ? 'día' : 'días'}`;
-    document.getElementById("res-price-day").textContent = `${currencyFormatter.format(dailyValue)} / día`;
-    document.getElementById("res-price-total").textContent = currencyFormatter.format(totalValue);
-
-    // Ocultar mensaje de carga y mostrar tarjeta visual
-    statusMessage.style.display = "none";
-    resultsDiv.style.display = "block";
-
+    return { dailyValue, totalValue, days, rateCode: actualRate };
   } catch (err) {
-    console.error("Fallo en la petición:", err);
-    statusMessage.style.background = "#7f1d1d";
-    statusMessage.style.color = "#fca5a5";
-    statusMessage.textContent = "Error de conexión con el Proxy: " + err.message;
+    console.error("Error cotizando", v.id, err);
+    return { error: "Error de conexión" };
   }
-}
-function formatDateSpan(dateStr) {
-  if (!dateStr) return "—";
-  const parts = dateStr.split("-");
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }

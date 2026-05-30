@@ -23,12 +23,38 @@
       <div class="header-actions">
         <button id="btn-xml" class="btn btn-primary">Generar XML</button>
         <button id="btn-copy-urls" class="btn btn-ghost">Copiar URLs</button>
-        <button id="btn-calc-price" class="btn" disabled>Calcular precio/día</button>
       </div>
     </div>
   </header>
 
   <main class="main">
+
+    <section class="quote-bar">
+      <div class="quote-field">
+        <label for="q-pickup">Recogida</label>
+        <input type="date" id="q-pickup" class="input" />
+      </div>
+      <div class="quote-field">
+        <label for="q-dropoff">Devolución</label>
+        <input type="date" id="q-dropoff" class="input" />
+      </div>
+      <div class="quote-field">
+        <label for="q-station">Oficina</label>
+        <select id="q-station" class="select">
+          <option value="LPA">Gran Canaria Aeropuerto (LPA)</option>
+          <option value="TFS">Tenerife Sur Aeropuerto (TFS)</option>
+          <option value="TFN">Tenerife Norte Aeropuerto (TFN)</option>
+          <option value="FUE">Fuerteventura Aeropuerto (FUE)</option>
+          <option value="ACE">Lanzarote Aeropuerto (ACE)</option>
+          <option value="SPC">La Palma Aeropuerto (SPC)</option>
+          <option value="GMZ">La Gomera Aeropuerto (GMZ)</option>
+          <option value="GOO">La Gomera Muelle (GOO)</option>
+          <option value="VDE">El Hierro Aeropuerto (VDE)</option>
+        </select>
+      </div>
+      <button id="btn-get-prices" class="btn btn-primary">Obtener precios</button>
+      <p class="quote-hint">Selecciona modelos abajo para cotizarlos, o no marques ninguno para obtener precios de toda la flota.</p>
+    </section>
 
     <section class="kpis">
       <div class="kpi">
@@ -103,91 +129,7 @@
     <p>Rentway Canary Islands · Las Palmas de Gran Canaria · <span id="footer-year"></span></p>
   </footer>
 
-  <script src="js/app.js?v=3"></script>
-  <div id="price-modal" class="modal hidden">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Calculador de Tarifas en Vivo</h2>
-        <button class="modal-close" data-close-price>&times;</button>
-      </div>
-      <div class="modal-body">
-        <p id="price-target-info" class="text-muted"></p>
-
-        <div class="form-grid" style="display: grid; gap: 1rem; margin-top: 1rem;">
-          <div>
-            <label>Tarifa (Rate Code)</label>
-            <input type="text" id="calc-rate" value="" placeholder="Vacío = mejor tarifa disponible">
-          </div>
-          <div>
-            <label>Fecha Recogida</label>
-            <input type="date" id="calc-pickup-date">
-          </div>
-          <div>
-            <label>Fecha Devolución</label>
-            <input type="date" id="calc-dropoff-date">
-          </div>
-          <div>
-            <label>Oficina Avis</label>
-            <select id="calc-station">
-              <option value="LPA">Gran Canaria Aeropuerto (LPA)</option>
-              <option value="TFS">Tenerife Sur Aeropuerto (TFS)</option>
-              <option value="TFN">Tenerife Norte Aeropuerto (TFN)</option>
-              <option value="FUE">Fuerteventura Aeropuerto (FUE)</option>
-              <option value="ACE">Lanzarote Aeropuerto (ACE)</option>
-              <option value="SPC">La Palma Aeropuerto (SPC)</option>
-              <option value="GMZ">La Gomera Aeropuerto (GMZ)</option>
-              <option value="GOO">La Gomera Muelle (GOO)</option>
-              <option value="VDE">El Hierro Aeropuerto (VDE)</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="margin-top: 1.5rem;">
-          <button id="btn-execute-calc" class="btn btn-primary">Solicitar Precios a Rentway</button>
-        </div>
-
-        <div id="price-results" style="margin-top: 1.5rem; display: none;">
-          <hr style="border: 0; border-top: 1px solid #3f3f46; margin-bottom: 1.5rem;">
-          <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.2rem; font-weight: 600;">Resumen de la Cotización
-          </h3>
-
-          <div class="result-card"
-            style="background: #1e1e2f; border: 1px solid #3f3f46; border-radius: 12px; padding: 1.5rem; color: #fff;">
-            <div
-              style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3f3f46; padding-bottom: 1rem; margin-bottom: 1rem;">
-              <div>
-                <h4 id="res-model-name" style="margin: 0; font-size: 1.2rem; color: #60a5fa;">—</h4>
-                <p id="res-dates" style="margin: 0.2rem 0 0 0; font-size: 0.9rem; color: #9ca3af;">Fechas: —</p>
-              </div>
-              <div style="text-align: right;">
-                <span id="res-rate-badge"
-                  style="background: #2563eb; color: #fff; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">—</span>
-              </div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-              <div style="display: flex; justify-content: space-between; font-size: 1rem;">
-                <span style="color: #9ca3af;">Días totales:</span>
-                <span id="res-total-days" style="font-weight: 600;">—</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; font-size: 1rem;">
-                <span style="color: #9ca3af;">Precio por día:</span>
-                <span id="res-price-day" style="font-weight: 600; color: #34d399;">—</span>
-              </div>
-              <div
-                style="display: flex; justify-content: space-between; font-size: 1.3rem; border-top: 1px dashed #3f3f46; padding-top: 0.75rem; margin-top: 0.25rem;">
-                <span style="font-weight: bold; color: #fff;">PRECIO TOTAL:</span>
-                <span id="res-price-total" style="font-weight: bold; color: #34d399;">—</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="price-status-message"
-          style="margin-top: 1.5rem; padding: 1rem; border-radius: 8px; display: none; font-size: 0.95rem;"></div>
-      </div>
-    </div>
-  </div>
+  <script src="js/app.js?v=4"></script>
 </body>
 
 </html>

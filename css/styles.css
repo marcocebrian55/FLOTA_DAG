@@ -662,3 +662,103 @@ body {
   color: var(--text-muted);
   margin-left: 8px;
 }
+
+/* ============================================
+   Barra de cotización (fechas + oficina)
+   ============================================ */
+.quote-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr auto;
+  align-items: end;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 24px;
+}
+
+.quote-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quote-field label {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.quote-bar .input,
+.quote-bar .select {
+  width: 100%;
+}
+
+.quote-bar #btn-get-prices {
+  height: 44px;
+  white-space: nowrap;
+}
+
+.quote-hint {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+@media (max-width: 720px) {
+  .quote-bar {
+    grid-template-columns: 1fr;
+  }
+  .quote-bar #btn-get-prices {
+    width: 100%;
+  }
+}
+
+/* ============================================
+   Precio en tarjeta
+   ============================================ */
+.card-price-slot:empty {
+  display: none;
+}
+
+.card-price {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.card-price .price-day {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.card-price .price-day small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.card-price .price-total {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.card-price.loading,
+.card-price.error {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.card-price.error {
+  color: var(--danger);
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.08);
+}
