@@ -39,6 +39,16 @@
         <input type="date" id="q-dropoff" class="input" />
       </div>
       <div class="quote-field">
+        <label for="q-provider">Proveedor</label>
+        <select id="q-provider" class="select">
+          <option value="booking">Booking</option>
+          <option value="bsp" disabled>BSP (pendiente credenciales)</option>
+          <option value="aurumcars" disabled>Aurumcars (pendiente credenciales)</option>
+          <option value="sunnycars" disabled>Sunnycars (pendiente credenciales)</option>
+          <option value="cartroller" disabled>Cartroller (pendiente credenciales)</option>
+        </select>
+      </div>
+      <div class="quote-field">
         <label for="q-station">Oficina</label>
         <select id="q-station" class="select">
           <option value="LPA">Gran Canaria Aeropuerto (LPA)</option>
@@ -129,7 +139,7 @@
     <p>Rentway Canary Islands · Las Palmas de Gran Canaria · <span id="footer-year"></span></p>
   </footer>
 
-  <script src="js/app.js?v=4"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 
 </html>

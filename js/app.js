@@ -391,7 +391,6 @@ function bindEvents() {
 // Cotizador multi-modelo (SOAP Jimpisoft)
 // ============================================
 const PRICE_WS_URL = "https://small-moon-0352.mcebrian-334.workers.dev";
-const STATIONS_WITHOUT_RATE = ["GMZ", "GOO"];
 const PRICE_CONCURRENCY = 4;
 
 const RENTWAY_ERRORS = {
@@ -405,10 +404,6 @@ const RENTWAY_ERRORS = {
 
 state.prices = {}; // id -> {loading} | {error} | {dailyValue, totalValue, days, rateCode}
 
-function rateForStation(station) {
-  return STATIONS_WITHOUT_RATE.includes(station) ? "" : "AG1" + station;
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   const today = new Date();
   const tomorrow = new Date(today);
@@ -418,14 +413,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const pickupEl = document.getElementById("q-pickup");
   const dropoffEl = document.getElementById("q-dropoff");
   const stationEl = document.getElementById("q-station");
+  const providerEl = document.getElementById("q-provider");
   const btn = document.getElementById("btn-get-prices");
 
   if (pickupEl) { pickupEl.value = iso(today); pickupEl.min = iso(today); }
   if (dropoffEl) { dropoffEl.value = iso(tomorrow); dropoffEl.min = iso(tomorrow); }
   if (btn) btn.addEventListener("click", obtenerPrecios);
 
-  // Al cambiar fechas u oficina, los precios mostrados quedan obsoletos
-  [pickupEl, dropoffEl, stationEl].forEach(el => {
+  // Al cambiar fechas, oficina o proveedor, los precios mostrados quedan obsoletos
+  [pickupEl, dropoffEl, stationEl, providerEl].forEach(el => {
     if (el) el.addEventListener("change", clearPrices);
   });
 });
@@ -457,6 +453,7 @@ async function obtenerPrecios() {
   const pickupDate = document.getElementById("q-pickup").value;
   const dropoffDate = document.getElementById("q-dropoff").value;
   const station = document.getElementById("q-station").value || "LPA";
+  const provider = document.getElementById("q-provider")?.value || "booking";
 
   if (!pickupDate || !dropoffDate) { showToast("Indica fecha de recogida y devolución"); return; }
   if (new Date(dropoffDate) <= new Date(pickupDate)) {
@@ -468,8 +465,6 @@ async function obtenerPrecios() {
   let targets = getSelectedVehicles();
   if (targets.length === 0) targets = [...state.vehiculos];
 
-  const rateCode = rateForStation(station);
-
   targets.forEach(v => { state.prices[v.id] = { loading: true }; updateCardPrice(v.id); });
 
   const btn = document.getElementById("btn-get-prices");
@@ -479,7 +474,7 @@ async function obtenerPrecios() {
   btn.textContent = "Consultando…";
 
   await runPool(targets, PRICE_CONCURRENCY, async v => {
-    state.prices[v.id] = await fetchVehiclePrice(v, { pickupDate, dropoffDate, station, rateCode });
+    state.prices[v.id] = await fetchVehiclePrice(v, { pickupDate, dropoffDate, station, provider });
     updateCardPrice(v.id);
   });
 
@@ -497,39 +492,23 @@ async function runPool(items, size, worker) {
   await Promise.all(runners);
 }
 
-async function fetchVehiclePrice(v, { pickupDate, dropoffDate, station, rateCode }) {
-  const soapRequest = `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:tns="http://www.jimpisoft.pt/Rentway_Reservations_WS/getMultiplePrices">
-  <soap:Header/>
-  <soap:Body>
-    <tns:MultiplePrices>
-      <tns:objRequest>
-        <tns:companyCode>200037</tns:companyCode>
-        <tns:customerCode>18</tns:customerCode>
-        <tns:username>Booking</tns:username>
-        <tns:password>0NPwqRKSNf47S6f</tns:password>
-        <tns:groupID>${v.grupo}</tns:groupID>
-        ${rateCode ? `<tns:rateCode>${rateCode}</tns:rateCode>` : ""}
-        <tns:pickUp>
-          <tns:Date>${pickupDate}T10:00:00</tns:Date>
-          <tns:rentalStation>${station}</tns:rentalStation>
-        </tns:pickUp>
-        <tns:dropOff>
-          <tns:Date>${dropoffDate}T10:00:00</tns:Date>
-          <tns:rentalStation>${station}</tns:rentalStation>
-        </tns:dropOff>
-      </tns:objRequest>
-    </tns:MultiplePrices>
-  </soap:Body>
-</soap:Envelope>`;
-
+async function fetchVehiclePrice(v, { pickupDate, dropoffDate, station, provider }) {
+  // El Worker añade las credenciales del proveedor y construye el SOAP server-side.
   try {
     const response = await fetch(PRICE_WS_URL, {
       method: "POST",
       cache: "no-store",
-      headers: { "Content-Type": "text/xml; charset=utf-8" },
-      body: soapRequest
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider, groupID: v.grupo, pickupDate, dropoffDate, station })
     });
+
+    // El Worker responde JSON en caso de error de configuración/proveedor
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const data = await response.json();
+      return { error: RENTWAY_ERRORS[data.error] || data.error || "Error del proveedor" };
+    }
+
     const xmlDoc = new DOMParser().parseFromString(await response.text(), "text/xml");
 
     const errorCode = xmlDoc.querySelector("errorCode")?.textContent?.trim();
@@ -544,7 +523,7 @@ async function fetchVehiclePrice(v, { pickupDate, dropoffDate, station, rateCode
     const calcDays = Math.round((new Date(dropoffDate) - new Date(pickupDate)) / 86400000) || 1;
     const days = daysText ? parseInt(daysText, 10) : calcDays;
     const dailyValue = parseFloat(xmlDoc.querySelector("totalDayValueWithTax")?.textContent || "0") || (totalValue / days);
-    const actualRate = xmlDoc.querySelector("rateCode")?.textContent?.trim() || rateCode;
+    const actualRate = xmlDoc.querySelector("rateCode")?.textContent?.trim() || "";
 
     return { dailyValue, totalValue, days, rateCode: actualRate };
   } catch (err) {
