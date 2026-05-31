@@ -405,10 +405,12 @@ const RENTWAY_ERRORS = {
 state.prices = {}; // id -> {loading} | {error} | {dailyValue, totalValue, days, rateCode}
 
 document.addEventListener("DOMContentLoaded", () => {
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
   const iso = d => d.toISOString().split("T")[0];
+  const addDays = (base, n) => { const d = new Date(base); d.setDate(d.getDate() + n); return d; };
+  const today = new Date();
+  // Jimpisoft rechaza recogidas en el día actual: por defecto, recogida mañana
+  const pickupDefault = addDays(today, 1);
+  const dropoffDefault = addDays(today, 4);
 
   const pickupEl = document.getElementById("q-pickup");
   const dropoffEl = document.getElementById("q-dropoff");
@@ -416,8 +418,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const providerEl = document.getElementById("q-provider");
   const btn = document.getElementById("btn-get-prices");
 
-  if (pickupEl) { pickupEl.value = iso(today); pickupEl.min = iso(today); }
-  if (dropoffEl) { dropoffEl.value = iso(tomorrow); dropoffEl.min = iso(tomorrow); }
+  if (pickupEl) { pickupEl.value = iso(pickupDefault); pickupEl.min = iso(pickupDefault); }
+  if (dropoffEl) { dropoffEl.value = iso(dropoffDefault); dropoffEl.min = iso(addDays(today, 2)); }
   if (btn) btn.addEventListener("click", obtenerPrecios);
 
   // Al cambiar fechas, oficina o proveedor, los precios mostrados quedan obsoletos
