@@ -16,8 +16,8 @@
   --border: #2a323d;
   --text: #e8edf2;
   --text-muted: #8a96a3;
-  --accent: #4f8cff;
-  --accent-hover: #6ba0ff;
+  --accent: #d4002a;
+  --accent-hover: #ec1b3f;
   --success: #4ade80;
   --warning: #fbbf24;
   --danger: #f87171;
@@ -71,11 +71,14 @@ body {
 }
 
 .brand-logo {
-  font-size: 32px;
-  width: 48px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  padding: 0 14px;
   height: 48px;
   background: var(--accent);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,6 +162,7 @@ body {
 .kpi {
   background: var(--bg-card);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
   border-radius: var(--radius);
   padding: 18px;
   display: flex;
@@ -667,10 +671,9 @@ body {
    Barra de cotización (fechas + oficina)
    ============================================ */
 .quote-bar {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.1fr 1.3fr auto;
-  align-items: end;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -678,17 +681,72 @@ body {
   margin-bottom: 24px;
 }
 
+.quote-mode {
+  display: inline-flex;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  align-self: flex-start;
+}
+
+.mode-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.mode-tab:hover { color: var(--text); }
+.mode-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.mode-tab-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.quote-bar [hidden] { display: none !important; }
+
+.quote-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
 .quote-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1 1 160px;
+  min-width: 150px;
+  position: relative;
 }
+
+.quote-field-grow { flex: 2 1 280px; }
 
 .quote-field label {
   font-size: 13px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.quote-field-note {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--accent);
+  pointer-events: none;
 }
 
 .quote-bar .input,
@@ -699,22 +757,18 @@ body {
 .quote-bar #btn-get-prices {
   height: 44px;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .quote-hint {
-  grid-column: 1 / -1;
   font-size: 13px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin: 0;
 }
 
 @media (max-width: 720px) {
-  .quote-bar {
-    grid-template-columns: 1fr;
-  }
-  .quote-bar #btn-get-prices {
-    width: 100%;
-  }
+  .quote-field { flex: 1 1 100%; }
+  .quote-bar #btn-get-prices { width: 100%; }
 }
 
 /* ============================================

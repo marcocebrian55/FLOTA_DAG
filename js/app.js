@@ -433,6 +433,177 @@ function clearPrices() {
   document.querySelectorAll(".card-price-slot").forEach(slot => { slot.innerHTML = ""; });
 }
 
+// ============================================
+// Modo Directa: tarifas internas (cálculo local)
+// ============================================
+state.mode = "directa";          // "directa" | "brokers"
+state.rateCodes = [];            // [{code, desc, brand}]
+state.ratesData = null;          // dataset completo (lazy)
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupModeTabs();
+  loadRateCodes();
+});
+
+function setupModeTabs() {
+  const tabDir = document.getElementById("mode-directa");
+  const tabBrk = document.getElementById("mode-brokers");
+  if (!tabDir || !tabBrk) return;
+  const apply = mode => {
+    state.mode = mode;
+    tabDir.classList.toggle("mode-tab-active", mode === "directa");
+    tabBrk.classList.toggle("mode-tab-active", mode === "brokers");
+    tabDir.setAttribute("aria-selected", mode === "directa");
+    tabBrk.setAttribute("aria-selected", mode === "brokers");
+    document.querySelectorAll("[data-mode]").forEach(el => {
+      el.hidden = el.getAttribute("data-mode") !== mode;
+    });
+    clearPrices();
+  };
+  tabDir.addEventListener("click", () => apply("directa"));
+  tabBrk.addEventListener("click", () => apply("brokers"));
+  apply("directa");
+}
+
+async function loadRateCodes() {
+  const input = document.getElementById("q-ratecode");
+  const brandEl = document.getElementById("q-brand");
+  const descEl = document.getElementById("ratecode-desc");
+  if (!input) return;
+  try {
+    const res = await fetch("data/rate-codes.json", { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state.rateCodes = (await res.json()).codes || [];
+  } catch (err) {
+    console.error("Error cargando rate-codes.json:", err);
+    showToast("No se pudo cargar el catálogo de tarifas");
+    return;
+  }
+  const fillDatalist = () => {
+    const brand = brandEl ? brandEl.value : "";
+    const list = document.getElementById("ratecode-list");
+    list.innerHTML = state.rateCodes
+      .filter(c => !brand || c.brand === brand)
+      .map(c => `<option value="${escapeHtml(c.code)}">${escapeHtml(c.desc)}</option>`)
+      .join("");
+  };
+  fillDatalist();
+
+  // Tarifa por defecto: se APLICA si el campo se deja vacío, pero NO se prerrellena,
+  // porque el datalist nativo filtraría el desplegable a esa única coincidencia.
+  state.defaultRate = "ADTLPA";
+  const def = state.rateCodes.find(c => c.code === state.defaultRate);
+  const showNote = () => {
+    if (!descEl) return;
+    const v = input.value.trim().toUpperCase();
+    if (!v) {
+      descEl.textContent = def ? `Por defecto: ${def.code} · ${def.desc}` : "";
+    } else {
+      const match = state.rateCodes.find(c => c.code.toUpperCase() === v);
+      descEl.textContent = match ? `${match.desc} · ${match.brand}` : "";
+    }
+  };
+  showNote();
+
+  if (brandEl) brandEl.addEventListener("change", () => {
+    const brand = brandEl.value;
+    const v = input.value.trim().toUpperCase();
+    // Si la tarifa escrita no pertenece a la marca elegida, se borra (no es válida para esa marca)
+    if (brand && v) {
+      const cur = state.rateCodes.find(c => c.code.toUpperCase() === v);
+      if (cur && cur.brand !== brand) input.value = "";
+    }
+    fillDatalist();
+    showNote();
+    clearPrices();
+  });
+  input.addEventListener("input", () => { showNote(); clearPrices(); });
+}
+
+async function ensureRatesData() {
+  if (state.ratesData) return state.ratesData;
+  const res = await fetch("data/rates.json", { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  state.ratesData = await res.json();
+  return state.ratesData;
+}
+
+// Elige la temporada (validez) cuyo rango de alquiler contiene la recogida
+// y cuya ventana de reserva contiene la fecha de reserva (hoy).
+function pickSeason(seasons, pickupDate, reservationDate) {
+  if (!seasons || !seasons.length) return null;
+  const pu = new Date(pickupDate + "T12:00:00");
+  const rv = new Date(reservationDate);
+  const inRange = (d, a, b) => d >= new Date(a) && d <= new Date(b);
+  const candidates = seasons.filter(s =>
+    inRange(pu, s.sd, s.ed) && inRange(rv, s.rf, s.rt)
+  );
+  if (candidates.length) {
+    // la de rango de alquiler más estrecho (más específica)
+    candidates.sort((a, b) =>
+      (new Date(a.ed) - new Date(a.sd)) - (new Date(b.ed) - new Date(b.sd))
+    );
+    return candidates[0];
+  }
+  // fallback: solo por fecha de recogida (ignora ventana de reserva)
+  const byPickup = seasons.filter(s => inRange(pu, s.sd, s.ed));
+  return byPickup.length ? byPickup[0] : null;
+}
+
+function computeLocalPrice(rate, grupo, pickupDate, dropoffDate) {
+  const days = Math.round((new Date(dropoffDate) - new Date(pickupDate)) / 86400000) || 1;
+  const season = pickSeason(rate.seasons, pickupDate, new Date());
+  if (!season) return { error: "Sin validez para esa fecha de recogida" };
+  const groups = rate.matrix[season.id];
+  if (!groups) return { error: "Sin matriz para esa validez" };
+  const g = groups.find(x => x.g === grupo);
+  if (!g) return { error: `Grupo ${grupo} no tarifado` };
+  const band = g.b.find(b => b[0] <= days && days <= b[1]);
+  if (!band) return { error: `Sin tramo para ${days} días` };
+  const dailyValue = band[2];
+  const additional = band[3] || 0;
+  const totalValue = +(dailyValue * days + additional).toFixed(2);
+  return { dailyValue, totalValue, days, rateCode: state._rateCodeUsed };
+}
+
+async function obtenerPreciosDirecta() {
+  const pickupDate = document.getElementById("q-pickup").value;
+  const dropoffDate = document.getElementById("q-dropoff").value;
+  let code = (document.getElementById("q-ratecode").value || "").trim().toUpperCase();
+  if (!code) code = state.defaultRate || "";
+
+  if (!pickupDate || !dropoffDate) { showToast("Indica fecha de recogida y devolución"); return; }
+  if (new Date(dropoffDate) <= new Date(pickupDate)) {
+    showToast("La devolución debe ser posterior a la recogida"); return;
+  }
+  if (!code) { showToast("Escribe o elige un código de tarifa"); return; }
+
+  const btn = document.getElementById("btn-get-prices");
+  const label = btn.textContent;
+  btn.disabled = true; btn.classList.add("btn-disabled"); btn.textContent = "Calculando…";
+
+  try {
+    const data = await ensureRatesData();
+    const rate = data.rates[code];
+    if (!rate) { showToast(`El código "${code}" no existe`); return; }
+    state._rateCodeUsed = code;
+
+    let targets = getSelectedVehicles();
+    if (targets.length === 0) targets = [...state.vehiculos];
+
+    targets.forEach(v => {
+      state.prices[v.id] = computeLocalPrice(rate, v.grupo, pickupDate, dropoffDate);
+      updateCardPrice(v.id);
+    });
+    showToast(`Precios calculados · ${code} (${targets.length} ${targets.length === 1 ? "modelo" : "modelos"})`);
+  } catch (err) {
+    console.error("Error cálculo local:", err);
+    showToast("No se pudieron calcular los precios");
+  } finally {
+    btn.disabled = false; btn.classList.remove("btn-disabled"); btn.textContent = label;
+  }
+}
+
 function priceBlockHtml(id) {
   const p = state.prices[id];
   if (!p) return "";
@@ -452,6 +623,8 @@ function updateCardPrice(id) {
 }
 
 async function obtenerPrecios() {
+  if (state.mode === "directa") return obtenerPreciosDirecta();
+
   const pickupDate = document.getElementById("q-pickup").value;
   const dropoffDate = document.getElementById("q-dropoff").value;
   const station = document.getElementById("q-station").value || "LPA";

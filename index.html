@@ -13,7 +13,7 @@
   <header class="header">
     <div class="header-inner">
       <div class="brand">
-        <div class="brand-logo">🚗</div>
+        <div class="brand-logo">AVIS</div>
         <div>
           <h1>Rentway Canary Islands</h1>
           <p class="brand-sub">Panel de tarifas de flota</p>
@@ -30,40 +30,69 @@
   <main class="main">
 
     <section class="quote-bar">
-      <div class="quote-field">
-        <label for="q-pickup">Recogida</label>
-        <input type="date" id="q-pickup" class="input" />
+      <div class="quote-mode" role="tablist" aria-label="Modo de tarificación">
+        <button type="button" id="mode-directa" class="mode-tab mode-tab-active" role="tab" aria-selected="true">Directa (código de tarifa)</button>
+        <button type="button" id="mode-brokers" class="mode-tab" role="tab" aria-selected="false">Brokers</button>
       </div>
-      <div class="quote-field">
-        <label for="q-dropoff">Devolución</label>
-        <input type="date" id="q-dropoff" class="input" />
+
+      <div class="quote-fields">
+        <div class="quote-field">
+          <label for="q-pickup">Recogida</label>
+          <input type="date" id="q-pickup" class="input" />
+        </div>
+        <div class="quote-field">
+          <label for="q-dropoff">Devolución</label>
+          <input type="date" id="q-dropoff" class="input" />
+        </div>
+
+        <!-- Modo Directa -->
+        <div class="quote-field" data-mode="directa">
+          <label for="q-brand">Marca</label>
+          <select id="q-brand" class="select">
+            <option value="">Todas</option>
+            <option value="AVIS">Avis</option>
+            <option value="BUDGET">Budget</option>
+            <option value="TURISPRIME">Turisprime</option>
+          </select>
+        </div>
+        <div class="quote-field quote-field-grow" data-mode="directa">
+          <label for="q-ratecode">Código de tarifa</label>
+          <input type="text" id="q-ratecode" class="input" list="ratecode-list" autocomplete="off"
+            placeholder="Escribe o elige (ej. ADTLPA, AG1LPA, BECLPA…)" />
+          <datalist id="ratecode-list"></datalist>
+          <small id="ratecode-desc" class="quote-field-note"></small>
+        </div>
+
+        <!-- Modo Brokers -->
+        <div class="quote-field" data-mode="brokers" hidden>
+          <label for="q-provider">Proveedor</label>
+          <select id="q-provider" class="select">
+            <option value="booking">Booking</option>
+            <option value="bsp" disabled>BSP (pendiente credenciales)</option>
+            <option value="aurumcars" disabled>Aurumcars (pendiente credenciales)</option>
+            <option value="sunnycars" disabled>Sunnycars (pendiente credenciales)</option>
+            <option value="cartroller" disabled>Cartroller (pendiente credenciales)</option>
+          </select>
+        </div>
+        <div class="quote-field" data-mode="brokers" hidden>
+          <label for="q-station">Oficina</label>
+          <select id="q-station" class="select">
+            <option value="LPA">Gran Canaria Aeropuerto (LPA)</option>
+            <option value="TFS">Tenerife Sur Aeropuerto (TFS)</option>
+            <option value="TFN">Tenerife Norte Aeropuerto (TFN)</option>
+            <option value="FUE">Fuerteventura Aeropuerto (FUE)</option>
+            <option value="ACE">Lanzarote Aeropuerto (ACE)</option>
+            <option value="SPC">La Palma Aeropuerto (SPC)</option>
+            <option value="GMZ">La Gomera Aeropuerto (GMZ)</option>
+            <option value="GOO">La Gomera Muelle (GOO)</option>
+            <option value="VDE">El Hierro Aeropuerto (VDE)</option>
+          </select>
+        </div>
+
+        <button id="btn-get-prices" class="btn btn-primary">Obtener precios</button>
       </div>
-      <div class="quote-field">
-        <label for="q-provider">Proveedor</label>
-        <select id="q-provider" class="select">
-          <option value="booking">Booking</option>
-          <option value="bsp" disabled>BSP (pendiente credenciales)</option>
-          <option value="aurumcars" disabled>Aurumcars (pendiente credenciales)</option>
-          <option value="sunnycars" disabled>Sunnycars (pendiente credenciales)</option>
-          <option value="cartroller" disabled>Cartroller (pendiente credenciales)</option>
-        </select>
-      </div>
-      <div class="quote-field">
-        <label for="q-station">Oficina</label>
-        <select id="q-station" class="select">
-          <option value="LPA">Gran Canaria Aeropuerto (LPA)</option>
-          <option value="TFS">Tenerife Sur Aeropuerto (TFS)</option>
-          <option value="TFN">Tenerife Norte Aeropuerto (TFN)</option>
-          <option value="FUE">Fuerteventura Aeropuerto (FUE)</option>
-          <option value="ACE">Lanzarote Aeropuerto (ACE)</option>
-          <option value="SPC">La Palma Aeropuerto (SPC)</option>
-          <option value="GMZ">La Gomera Aeropuerto (GMZ)</option>
-          <option value="GOO">La Gomera Muelle (GOO)</option>
-          <option value="VDE">El Hierro Aeropuerto (VDE)</option>
-        </select>
-      </div>
-      <button id="btn-get-prices" class="btn btn-primary">Obtener precios</button>
-      <p class="quote-hint">Selecciona modelos abajo para cotizarlos, o no marques ninguno para obtener precios de toda la flota.</p>
+      <p class="quote-hint" data-mode="directa">Modo Directa: calcula precios desde las tarifas internas de Rentway. El código ya incluye la oficina y la marca. Selecciona modelos abajo, o ninguno para toda la flota.</p>
+      <p class="quote-hint" data-mode="brokers" hidden>Modo Brokers: consulta el precio en vivo del canal seleccionado (SOAP). Selecciona modelos abajo, o ninguno para toda la flota.</p>
     </section>
 
     <section class="kpis">
@@ -139,7 +168,7 @@
     <p>Rentway Canary Islands · Las Palmas de Gran Canaria · <span id="footer-year"></span></p>
   </footer>
 
-  <script src="js/app.js?v=6"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 
 </html>

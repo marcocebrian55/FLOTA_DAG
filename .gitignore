@@ -1,1 +1,9 @@
 .wrangler/
+
+# Dataset de tarifas SENSIBLE — no publicar en GitHub Pages hasta tener login.
+# Contiene todos los precios internos (Avis/Budget/Turisprime).
+data/
+
+# Capturas de verificación Playwright
+.playwright-mcp/
+*.png
