@@ -816,3 +816,109 @@ body {
   border-color: rgba(248, 113, 113, 0.3);
   background: rgba(248, 113, 113, 0.08);
 }
+
+/* ============================================
+   Pantalla de login
+   ============================================ */
+#login-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(212, 0, 42, 0.18), transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(212, 0, 42, 0.12), transparent 40%),
+    var(--bg);
+}
+
+#login-screen[hidden] { display: none; }
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 32px 28px;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.login-brand h1 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.login-intro {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 22px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.login-field .input { width: 100%; }
+
+.login-submit {
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.login-error {
+  font-size: 13px;
+  color: var(--danger);
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  margin: -2px 0;
+}
+
+.login-foot {
+  margin-top: 22px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Sesión en el header */
+.session-user {
+  font-size: 13px;
+  color: var(--text-muted);
+  align-self: center;
+  margin-right: 2px;
+}
+
+@media (max-width: 480px) {
+  .login-card { padding: 26px 20px; }
+}

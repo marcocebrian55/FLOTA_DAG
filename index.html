@@ -5,10 +5,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rentway — Panel de tarifas de flota</title>
-  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/styles.css?v=2" />
 </head>
 
 <body>
+
+  <!-- Pantalla de login (visible solo sin sesión) -->
+  <div id="login-screen" hidden>
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-logo">AVIS</div>
+        <div>
+          <h1>Rentway Canary Islands</h1>
+          <p class="brand-sub">Panel de tarifas de flota</p>
+        </div>
+      </div>
+      <p class="login-intro">Acceso restringido. Inicia sesión para consultar las tarifas de flota.</p>
+      <form id="login-form" class="login-form" autocomplete="on">
+        <div class="login-field">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" class="input" required autocomplete="username" placeholder="tu@correo.com" />
+        </div>
+        <div class="login-field">
+          <label for="login-password">Contraseña</label>
+          <input type="password" id="login-password" class="input" required autocomplete="current-password" placeholder="••••••••" />
+        </div>
+        <p id="login-error" class="login-error" hidden></p>
+        <button type="submit" id="login-submit" class="btn btn-primary login-submit">Iniciar sesión</button>
+      </form>
+      <p class="login-foot">Herramienta interna · Marirrodriga S.L.</p>
+    </div>
+  </div>
+
+  <!-- Panel (visible solo con sesión) -->
+  <div id="app-root" hidden>
 
   <header class="header">
     <div class="header-inner">
@@ -23,6 +53,8 @@
       <div class="header-actions">
         <button id="btn-xml" class="btn btn-primary">Generar XML</button>
         <button id="btn-copy-urls" class="btn btn-ghost">Copiar URLs</button>
+        <span id="session-user" class="session-user"></span>
+        <button id="btn-logout" class="btn btn-ghost">Cerrar sesión</button>
       </div>
     </div>
   </header>
@@ -168,7 +200,12 @@
     <p>Rentway Canary Islands · Las Palmas de Gran Canaria · <span id="footer-year"></span></p>
   </footer>
 
-  <script src="js/app.js?v=9"></script>
+  </div><!-- /#app-root -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js?v=1"></script>
+  <script src="js/auth.js?v=1"></script>
+  <script src="js/app.js?v=10"></script>
 </body>
 
 </html>

@@ -22,11 +22,17 @@ function resolveImageUrl(imagen) {
   return BASE_URL + imagen.replace(/^\/+/, "");
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("footer-year").textContent = new Date().getFullYear();
   bindEvents();
-  await loadFleet();
 });
+
+/* Lo llama auth.js una vez hay sesión válida. Carga los datos
+   (flota local + catálogo de tarifas desde Supabase). */
+window.initFlotaApp = async function initFlotaApp() {
+  await loadFleet();
+  await loadRateCodes();
+};
 
 async function loadFleet() {
   try {
@@ -442,7 +448,6 @@ state.ratesData = null;          // dataset completo (lazy)
 
 document.addEventListener("DOMContentLoaded", () => {
   setupModeTabs();
-  loadRateCodes();
 });
 
 function setupModeTabs() {
@@ -471,9 +476,7 @@ async function loadRateCodes() {
   const descEl = document.getElementById("ratecode-desc");
   if (!input) return;
   try {
-    const res = await fetch("data/rate-codes.json", { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    state.rateCodes = (await res.json()).codes || [];
+    state.rateCodes = (await window.downloadJSONFromBucket("rate-codes.json")).codes || [];
   } catch (err) {
     console.error("Error cargando rate-codes.json:", err);
     showToast("No se pudo cargar el catálogo de tarifas");
@@ -522,9 +525,7 @@ async function loadRateCodes() {
 
 async function ensureRatesData() {
   if (state.ratesData) return state.ratesData;
-  const res = await fetch("data/rates.json", { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  state.ratesData = await res.json();
+  state.ratesData = await window.downloadJSONFromBucket("rates.json");
   return state.ratesData;
 }
 
