@@ -46,7 +46,11 @@ function showApp(session) {
   document.getElementById("app-root")?.removeAttribute("hidden");
 
   const userLabel = document.getElementById("session-user");
-  if (userLabel && session?.user) userLabel.textContent = session.user.email;
+  if (userLabel && session?.user) {
+    const meta = session.user.user_metadata || {};
+    const name = meta.display_name || meta.name || meta.full_name || session.user.email.split("@")[0];
+    userLabel.textContent = "User: " + name;
+  }
 
   if (!appInitialized && typeof window.initFlotaApp === "function") {
     appInitialized = true;
