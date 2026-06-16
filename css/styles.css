@@ -922,3 +922,121 @@ body {
 @media (max-width: 480px) {
   .login-card { padding: 26px 20px; }
 }
+
+/* ============================================
+   Explorador de precios (competencia)
+   ============================================ */
+.kpi-value-sm { font-size: 16px; font-weight: 600; }
+
+.mapping-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+
+.mapping-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.mapping-intro {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.mapping-head .btn { flex-shrink: 0; }
+
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.mapping-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mapping-from {
+  font-weight: 700;
+  min-width: 28px;
+  text-align: center;
+  padding: 6px 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.mapping-arrow { color: var(--text-muted); }
+.mapping-select { flex: 1; min-width: 0; }
+
+.table-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+.cmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.cmp-table thead th {
+  text-align: left;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--bg-elevated);
+  position: sticky;
+  top: 0;
+}
+
+.cmp-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.cmp-table tbody tr:last-child td { border-bottom: none; }
+.cmp-table tbody tr:hover { background: var(--bg-elevated); }
+.cmp-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.grp-badge {
+  display: inline-block;
+  min-width: 24px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+}
+
+.grp-avis {
+  background: rgba(212, 0, 42, 0.12);
+  border-color: var(--accent);
+  color: #ffb3c0;
+}
+
+.delta { font-weight: 700; font-variant-numeric: tabular-nums; }
+.delta-neg { color: var(--danger); }
+.delta-pos { color: var(--success); }
+.delta-neu { color: var(--text-muted); }
+.muted { color: var(--text-muted); font-size: 13px; }
+
+@media (max-width: 720px) {
+  .filters { grid-template-columns: 1fr 1fr; }
+}

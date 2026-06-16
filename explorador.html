@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rentway — Explorador de precios de la competencia</title>
+  <link rel="stylesheet" href="css/styles.css?v=3" />
+</head>
+
+<body>
+
+  <!-- Pantalla de login (visible solo sin sesión) -->
+  <div id="login-screen" hidden>
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-logo">AVIS</div>
+        <div>
+          <h1>Rentway Canary Islands</h1>
+          <p class="brand-sub">Explorador de precios</p>
+        </div>
+      </div>
+      <p class="login-intro">Acceso restringido. Inicia sesión para comparar tarifas con la competencia.</p>
+      <form id="login-form" class="login-form" autocomplete="on">
+        <div class="login-field">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" class="input" required autocomplete="username" placeholder="tu@correo.com" />
+        </div>
+        <div class="login-field">
+          <label for="login-password">Contraseña</label>
+          <input type="password" id="login-password" class="input" required autocomplete="current-password" placeholder="••••••••" />
+        </div>
+        <p id="login-error" class="login-error" hidden></p>
+        <button type="submit" id="login-submit" class="btn btn-primary login-submit">Iniciar sesión</button>
+      </form>
+      <p class="login-foot">Herramienta interna · creada por Marirrodriga S.L.</p>
+    </div>
+  </div>
+
+  <!-- Panel (visible solo con sesión) -->
+  <div id="app-root" hidden>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo">AVIS</div>
+        <div>
+          <h1>Rentway Canary Islands</h1>
+          <p class="brand-sub">Explorador de precios · competencia</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <a href="index.html" class="btn btn-ghost">← Panel de flota</a>
+        <span id="session-user" class="session-user"></span>
+        <button id="btn-logout" class="btn btn-ghost">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <section class="quote-bar">
+      <div class="quote-fields">
+        <div class="quote-field">
+          <label for="x-competitor">Competidor</label>
+          <select id="x-competitor" class="select">
+            <option value="cicar">CICAR</option>
+          </select>
+        </div>
+        <div class="quote-field">
+          <label for="x-pickup">Recogida</label>
+          <input type="date" id="x-pickup" class="input" />
+        </div>
+        <div class="quote-field">
+          <label for="x-dropoff">Devolución</label>
+          <input type="date" id="x-dropoff" class="input" />
+        </div>
+        <div class="quote-field">
+          <label for="x-ratecode">Tarifa Avis</label>
+          <input type="text" id="x-ratecode" class="input" value="ALPA" autocomplete="off" placeholder="ALPA" />
+        </div>
+        <button id="x-refresh" class="btn btn-primary">Comparar</button>
+      </div>
+      <p class="quote-hint">Compara el precio público de la competencia (datos capturados por el scraper) con tu tarifa interna de Rentway para el mismo grupo y fechas. Edita el emparejamiento de grupos abajo si no coincide.</p>
+    </section>
+
+    <section class="kpis">
+      <div class="kpi">
+        <span class="kpi-label">Modelos competencia</span>
+        <span class="kpi-value" id="x-kpi-total">—</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Más baratos que Avis</span>
+        <span class="kpi-value" id="x-kpi-cheaper">—</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Más caros que Avis</span>
+        <span class="kpi-value" id="x-kpi-pricier">—</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Capturado</span>
+        <span class="kpi-value kpi-value-sm" id="x-kpi-date">—</span>
+      </div>
+    </section>
+
+    <section class="filters">
+      <input type="search" id="x-filter-search" class="input" placeholder="Buscar por modelo o grupo…" />
+      <button id="x-toggle-mapping" class="btn btn-ghost">Emparejar grupos</button>
+    </section>
+
+    <section id="x-mapping" class="mapping-panel" hidden>
+      <div class="mapping-head">
+        <p class="mapping-intro">Asocia cada grupo de la competencia con tu grupo Avis equivalente (por tamaño/segmento y transmisión). Se guarda en este navegador.</p>
+        <button id="x-mapping-reset" class="btn btn-ghost">Restablecer por defecto</button>
+      </div>
+      <div id="x-mapping-grid" class="mapping-grid"></div>
+    </section>
+
+    <section class="table-wrap">
+      <table class="cmp-table">
+        <thead>
+          <tr>
+            <th>Grupo</th>
+            <th>Modelo competencia</th>
+            <th class="num">Pax</th>
+            <th class="num">Total comp.</th>
+            <th class="num">€/día comp.</th>
+            <th>Grupo Avis</th>
+            <th class="num">Total Avis</th>
+            <th class="num">€/día Avis</th>
+            <th class="num">Δ %</th>
+          </tr>
+        </thead>
+        <tbody id="x-table-body"></tbody>
+      </table>
+    </section>
+
+    <section id="x-empty" class="empty hidden">
+      <p>No hay datos de la competencia cargados todavía.</p>
+    </section>
+
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <footer class="footer">
+    <p>Rentway Canary Islands · Las Palmas de Gran Canaria · <span id="footer-year"></span></p>
+  </footer>
+
+  </div><!-- /#app-root -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js?v=1"></script>
+  <script src="js/auth.js?v=2"></script>
+  <script src="js/explorador.js?v=1"></script>
+</body>
+
+</html>

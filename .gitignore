@@ -7,3 +7,7 @@ data/
 # Capturas de verificación Playwright
 .playwright-mcp/
 *.png
+
+# Salida del scraper de competencia — se sirve desde el bucket privado, no desde Pages.
+scraper/*-prices.json
+scraper/node_modules/
