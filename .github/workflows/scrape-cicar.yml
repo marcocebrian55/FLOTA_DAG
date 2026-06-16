@@ -1,0 +1,36 @@
+name: Scrape competencia (CICAR) → bucket
+
+# Captura diaria de precios públicos de CICAR y subida al bucket privado.
+# Requiere el secreto del repo: SUPABASE_SERVICE_KEY (service_role de Supabase).
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 06:00 UTC cada día
+  workflow_dispatch: {}    # permite lanzarlo a mano desde la pestaña Actions
+
+# No necesita escribir en el repo (los datos van al bucket, no a Pages).
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-cicar
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Capturar precios de CICAR
+        working-directory: scraper
+        run: node scrape-cicar.mjs
+
+      - name: Subir al bucket privado
+        working-directory: scraper
+        env:
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node upload-to-bucket.mjs
