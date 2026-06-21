@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rentway — Explorador de precios de la competencia</title>
-  <link rel="stylesheet" href="css/styles.css?v=3" />
+  <link rel="stylesheet" href="css/styles.css?v=4" />
 </head>
 
 <body>
@@ -125,13 +125,13 @@
           <tr>
             <th>Grupo</th>
             <th>Modelo competencia</th>
-            <th class="num">Pax</th>
-            <th class="num">Total comp.</th>
-            <th class="num">€/día comp.</th>
+            <th class="num" title="Plazas / nº de pasajeros">Pax</th>
+            <th class="num" title="Precio total del alquiler completo según la competencia, para las fechas elegidas">Total competencia</th>
+            <th class="num" title="Precio por día de la competencia (total ÷ días)">€/día competencia</th>
             <th>Grupo Avis</th>
-            <th class="num">Total Avis</th>
-            <th class="num">€/día Avis</th>
-            <th class="num">Δ %</th>
+            <th class="num" title="Precio total del alquiler completo con tu tarifa Avis">Total Avis</th>
+            <th class="num" title="Precio por día de Avis (total ÷ días)">€/día Avis</th>
+            <th title="Cómo es el precio de la competencia comparado con tu tarifa Avis">Competencia vs Avis</th>
           </tr>
         </thead>
         <tbody id="x-table-body"></tbody>
@@ -155,7 +155,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js?v=1"></script>
   <script src="js/auth.js?v=2"></script>
-  <script src="js/explorador.js?v=1"></script>
+  <script src="js/explorador.js?v=2"></script>
 </body>
 
 </html>

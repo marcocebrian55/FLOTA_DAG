@@ -206,6 +206,10 @@ function render() {
   for (const v of q.vehicles) {
     if (search && !(`${v.name} ${v.group}`.toLowerCase().includes(search))) continue;
 
+    // Goldcar expone GRUPOS (varios modelos equivalentes por fila), no modelos sueltos como CICAR/Cabrera.
+    const groupTag = X.competitor === "goldcar"
+      ? ' <span class="model-tag" title="Goldcar agrupa varios modelos equivalentes bajo un mismo grupo; no es un modelo único">grupo</span>'
+      : "";
     const avisGroup = X.mapping[v.group] || "";
     let avisTotal = null, avisDay = null, avisNote = "";
     if (rate && avisGroup) {
@@ -217,18 +221,23 @@ function render() {
       avisNote = "sin emparejar";
     }
 
+    // Diferencia en lenguaje claro: la competencia ¿es más cara o más barata que Avis?
+    //  - más cara que nosotros  = verde (somos competitivos)
+    //  - más barata que nosotros = rojo (amenaza de precio)
     let deltaCell = '<span class="muted">—</span>';
     if (avisTotal != null && v.totalPrice) {
       const delta = ((v.totalPrice - avisTotal) / avisTotal) * 100;
-      const cls = delta < -1 ? "neg" : (delta > 1 ? "pos" : "neu");
-      if (delta < -1) cheaper++; else if (delta > 1) pricier++;
-      const sign = delta > 0 ? "+" : "";
-      deltaCell = `<span class="delta delta-${cls}">${sign}${delta.toFixed(1)}%</span>`;
+      const pct = Math.abs(delta).toFixed(0);
+      let cls, label;
+      if (delta > 1) { cls = "pos"; label = `${pct}% más cara`; pricier++; }
+      else if (delta < -1) { cls = "neg"; label = `${pct}% más barata`; cheaper++; }
+      else { cls = "neu"; label = "precio similar"; }
+      deltaCell = `<span class="delta delta-${cls}">${label}</span>`;
     }
 
     rows.push(`<tr>
       <td><span class="grp-badge">${v.group}</span></td>
-      <td>${v.name || "—"}</td>
+      <td>${v.name || "—"}${groupTag}</td>
       <td class="num">${v.pax ?? "—"}</td>
       <td class="num">${v.totalPrice != null ? v.totalPrice.toFixed(2) + " €" : "—"}</td>
       <td class="num">${v.perDay != null ? v.perDay.toFixed(2) + " €" : "—"}</td>

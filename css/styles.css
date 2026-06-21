@@ -1036,6 +1036,20 @@ body {
 .delta-pos { color: var(--success); }
 .delta-neu { color: var(--text-muted); }
 .muted { color: var(--text-muted); font-size: 13px; }
+.model-tag {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 6px;
+  padding: 1px 6px;
+  vertical-align: middle;
+  cursor: help;
+}
 
 @media (max-width: 720px) {
   .filters { grid-template-columns: 1fr 1fr; }
