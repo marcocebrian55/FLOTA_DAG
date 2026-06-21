@@ -7,13 +7,23 @@
    ============================================ */
 
 const X = {
-  comp: null,        // JSON de la competencia (cicar-prices.json)
+  competitor: "cicar", // competidor activo (clave de COMPETITORS)
+  comp: null,        // JSON de la competencia (<competitor>-prices.json)
   rates: null,       // rates.json del bucket
   rateCodeUsed: null,
   mapping: {},       // { grupoCompetencia: grupoAvis }
 };
 
-const MAPPING_KEY = "flota-cmp-mapping-cicar-v2";
+// Competidores disponibles. file = nombre del JSON en el bucket / scraper.
+const COMPETITORS = {
+  cicar: { label: "CICAR", file: "cicar-prices.json" },
+  cabreramedina: { label: "Cabrera Medina", file: "cabreramedina-prices.json" },
+};
+
+// Clave de localStorage para el emparejamiento del competidor activo (uno por competidor).
+function mappingKey() {
+  return `flota-cmp-mapping-${X.competitor}-v2`;
+}
 
 // Emparejamiento por defecto CICAR (grupo A–L) → Avis, por tamaño/segmento y transmisión.
 // CICAR no expone SIPP, pero cada letra agrupa un segmento; las letras D/F son automáticas.
@@ -52,10 +62,11 @@ function showToast(msg) {
 /* ---- carga de datos ---- */
 async function loadCompetitorData() {
   // Producción: bucket privado. Desarrollo local: fichero del scraper.
+  const file = COMPETITORS[X.competitor].file;
   try {
-    return await window.downloadJSONFromBucket("cicar-prices.json");
+    return await window.downloadJSONFromBucket(file);
   } catch (_) {
-    const res = await fetch("scraper/cicar-prices.json", { cache: "no-store" });
+    const res = await fetch(`scraper/${file}`, { cache: "no-store" });
     if (!res.ok) throw new Error("No se encontraron datos de la competencia");
     return res.json();
   }
@@ -100,11 +111,11 @@ function computeLocalPrice(rate, grupo, pickupDate, dropoffDate) {
 
 /* ---- emparejamiento de grupos ---- */
 function loadMapping() {
-  try { X.mapping = JSON.parse(localStorage.getItem(MAPPING_KEY)) || {}; }
+  try { X.mapping = JSON.parse(localStorage.getItem(mappingKey())) || {}; }
   catch (_) { X.mapping = {}; }
 }
 function saveMapping() {
-  localStorage.setItem(MAPPING_KEY, JSON.stringify(X.mapping));
+  localStorage.setItem(mappingKey(), JSON.stringify(X.mapping));
 }
 
 function competitorGroups() {
@@ -234,27 +245,12 @@ async function compare() {
   }
 }
 
-/* ---- arranque (lo invoca auth.js tras el login) ---- */
-window.initFlotaApp = async function initExplorador() {
-  document.getElementById("footer-year").textContent = new Date().getFullYear();
-  loadMapping();
-
-  document.getElementById("x-refresh").addEventListener("click", compare);
-  document.getElementById("x-filter-search").addEventListener("input", render);
-  document.getElementById("x-toggle-mapping").addEventListener("click", () => {
-    document.getElementById("x-mapping").toggleAttribute("hidden");
-  });
-  document.getElementById("x-mapping-reset").addEventListener("click", () => {
-    X.mapping = {};
-    saveMapping();
-    renderMapping();
-    render();
-    showToast("Emparejamiento restablecido");
-  });
-
+/* ---- carga datos del competidor activo y compara ---- */
+async function loadAndCompare() {
   try {
     X.comp = await loadCompetitorData();
   } catch (e) {
+    X.comp = null;
     showToast(e.message);
     document.getElementById("x-empty").classList.remove("hidden");
     return;
@@ -269,4 +265,30 @@ window.initFlotaApp = async function initExplorador() {
   }
 
   await compare();
+}
+
+/* ---- arranque (lo invoca auth.js tras el login) ---- */
+window.initFlotaApp = async function initExplorador() {
+  document.getElementById("footer-year").textContent = new Date().getFullYear();
+  loadMapping();
+
+  document.getElementById("x-refresh").addEventListener("click", compare);
+  document.getElementById("x-filter-search").addEventListener("input", render);
+  document.getElementById("x-competitor").addEventListener("change", (e) => {
+    X.competitor = e.target.value;
+    loadMapping(); // cada competidor tiene su propio emparejamiento persistido
+    loadAndCompare();
+  });
+  document.getElementById("x-toggle-mapping").addEventListener("click", () => {
+    document.getElementById("x-mapping").toggleAttribute("hidden");
+  });
+  document.getElementById("x-mapping-reset").addEventListener("click", () => {
+    X.mapping = {};
+    saveMapping();
+    renderMapping();
+    render();
+    showToast("Emparejamiento restablecido");
+  });
+
+  await loadAndCompare();
 };
