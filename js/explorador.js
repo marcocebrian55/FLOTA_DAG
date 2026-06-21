@@ -18,6 +18,7 @@ const X = {
 const COMPETITORS = {
   cicar: { label: "CICAR", file: "cicar-prices.json" },
   cabreramedina: { label: "Cabrera Medina", file: "cabreramedina-prices.json" },
+  goldcar: { label: "Goldcar", file: "goldcar-prices.json" },
 };
 
 // Clave de localStorage para el emparejamiento del competidor activo (uno por competidor).
@@ -25,10 +26,11 @@ function mappingKey() {
   return `flota-cmp-mapping-${X.competitor}-v2`;
 }
 
-// Emparejamiento por defecto CICAR (grupo A–L) → Avis, por tamaño/segmento y transmisión.
-// CICAR no expone SIPP, pero cada letra agrupa un segmento; las letras D/F son automáticas.
-// Editable por el usuario y persistido en localStorage.
-const DEFAULT_MAPPING = {
+// Emparejamiento por defecto de cada competidor → grupo Avis, por tamaño/segmento y transmisión.
+// CICAR/Cabrera comparten esquema de grupos A–L (mismo motor de reservas). Goldcar usa otro
+// (AA/A3/BB/CC/R/R2/D/D2/L/DD) y SÍ expone SIPP, pero el mapeo por defecto sigue siendo por
+// segmento. Todo editable por el usuario y persistido en localStorage (uno por competidor).
+const MAPPING_AL = {
   A: "SA",  // Fiat 500 (mini, manual)      → Hyundai i10 (MDMR)
   B: "SC",  // Opel Corsa (economy, manual) → VW Polo (EDMR)
   C: "SG",  // compacto manual (Ibiza/208)  → VW Taigo manual (CDMR)
@@ -42,6 +44,26 @@ const DEFAULT_MAPPING = {
   K: "LP",  // lujo/grande (XC60/Stelvio)   → Audi Q8 (LFAR)
   L: "LP",  // top lujo (Wrangler/XC90/BMW) → Audi Q8 (LFAR)
 };
+const DEFAULT_MAPPINGS = {
+  cicar: MAPPING_AL,
+  cabreramedina: MAPPING_AL,
+  goldcar: {
+    AA: "SA",  // Kia Picanto (mini, manual)       → Hyundai i10
+    A3: "SA",  // Hyundai i10 (mini, automático)   → Hyundai i10
+    BB: "SA",  // Fiat 500 (mini, manual)          → Hyundai i10
+    CC: "SC",  // Opel Corsa/Fiesta (economy)      → VW Polo
+    R:  "SG",  // Taigo/2008/MG ZS (SUV-B manual)  → VW Taigo manual
+    R2: "SK",  // Kamiq/Arona (SUV-B automático)   → VW Taigo Auto
+    D:  "SG",  // Focus/Astra (compacto manual)    → VW Taigo manual
+    D2: "SJ",  // KGM Tivoli (SUV familiar)        → VW T-Cross
+    L:  "EG",  // Ateca/MG HS/T-Roc (SUV-C)        → VW T-Roc
+    DD: "MJ",  // Arkana/Kuga/DS4 (SUV automático) → Audi Q3
+  },
+};
+// Mapeo por defecto del competidor activo.
+function defaultMapping() {
+  return DEFAULT_MAPPINGS[X.competitor] || {};
+}
 
 /* ---- utilidades ---- */
 function toISO(ddmmyyyy) {
@@ -140,7 +162,7 @@ function renderMapping() {
   grid.innerHTML = "";
   for (const cg of competitorGroups()) {
     if (!(cg in X.mapping)) {
-      const def = DEFAULT_MAPPING[cg];
+      const def = defaultMapping()[cg];
       X.mapping[cg] = avisGroups.includes(def) ? def : "";
     }
     const row = document.createElement("div");
