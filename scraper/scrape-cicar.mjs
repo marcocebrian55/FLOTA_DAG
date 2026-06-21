@@ -118,10 +118,21 @@ export async function scrapeAll({ offices = OFFICES, pickup, dropoff } = {}) {
   return { generatedAt: new Date().toISOString(), competitor: 'CICAR', source: BASE, queries: results };
 }
 
+// Formatea una fecha como dd/mm/yyyy y desplaza N días desde hoy.
+function fmtDate(d) {
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+function todayPlus(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return fmtDate(d);
+}
+
 // CLI: node scrape-cicar.mjs [fechaIni] [fechaFin]
+// Sin argumentos usa una ventana FUTURA (hoy+7 → hoy+14): CICAR rechaza fechas pasadas.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const pickup = { date: process.argv[2] || '17/06/2026', hour: '12' };
-  const dropoff = { date: process.argv[3] || '24/06/2026', hour: '12' };
+  const pickup = { date: process.argv[2] || todayPlus(7), hour: '12' };
+  const dropoff = { date: process.argv[3] || todayPlus(14), hour: '12' };
   const data = await scrapeAll({ pickup, dropoff });
   writeFileSync('cicar-prices.json', JSON.stringify(data, null, 2));
   const total = data.queries.reduce((a, q) => a + q.count, 0);
