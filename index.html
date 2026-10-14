@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rentway — Panel de tarifas de flota</title>
-  <link rel="stylesheet" href="css/styles.css?v=3" />
+  <link rel="stylesheet" href="css/styles.css?v=4" />
 </head>
 
 <body>
@@ -54,6 +54,7 @@
         <button id="btn-xml" class="btn btn-primary">Generar XML</button>
         <button id="btn-copy-urls" class="btn btn-ghost">Copiar URLs</button>
         <a href="explorador.html" class="btn btn-ghost">Explorador de precios</a>
+        <button id="btn-reservas" class="btn btn-primary" hidden>Reservas</button>
         <span id="session-user" class="session-user"></span>
         <button id="btn-logout" class="btn btn-ghost">Cerrar sesión</button>
       </div>
@@ -100,7 +101,7 @@
         <div class="quote-field" data-mode="brokers" hidden>
           <label for="q-provider">Proveedor</label>
           <select id="q-provider" class="select">
-            <option value="booking">Booking</option>
+            <option value="directo">Rentway directo</option>
             <option value="bsp" disabled>BSP (pendiente credenciales)</option>
             <option value="aurumcars" disabled>Aurumcars (pendiente credenciales)</option>
             <option value="sunnycars" disabled>Sunnycars (pendiente credenciales)</option>
@@ -195,6 +196,87 @@
     </div>
   </div>
 
+  <!-- Reservas en Rentway (solo con el servidor local: py server.py) -->
+  <div id="res-modal" class="modal hidden">
+    <div class="modal-backdrop" data-res-close></div>
+    <div class="modal-content res-modal-content">
+      <div class="modal-header">
+        <div class="res-tabs" role="tablist">
+          <button type="button" class="mode-tab mode-tab-active" data-res-tab="nueva">Nueva reserva</button>
+          <button type="button" class="mode-tab" data-res-tab="buscar">Buscar reserva</button>
+        </div>
+        <button class="modal-close" data-res-close>✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div id="res-env" class="res-env" hidden></div>
+
+        <!-- Paso 1: disponibilidad -->
+        <section data-res-step="1">
+          <div class="res-grid">
+            <div><label for="r-broker">Broker</label><select id="r-broker"></select></div>
+            <div><label for="r-of-rec">Oficina recogida</label><select id="r-of-rec" class="res-station"></select></div>
+            <div><label for="r-of-dev">Oficina devolución</label><select id="r-of-dev" class="res-station"></select></div>
+            <div><label for="r-f-rec">Recogida</label><input id="r-f-rec" type="date" /></div>
+            <div><label for="r-h-rec">Hora</label><input id="r-h-rec" type="time" value="10:00" /></div>
+            <div><label for="r-nac">Nacimiento conductor <small>(opcional)</small></label><input id="r-nac" type="date" /></div>
+            <div><label for="r-f-dev">Devolución</label><input id="r-f-dev" type="date" /></div>
+            <div><label for="r-h-dev">Hora</label><input id="r-h-dev" type="time" value="10:00" /></div>
+            <div><label for="r-promo">Código de promoción <small>(opcional)</small></label><input id="r-promo" maxlength="50" autocomplete="off" /></div>
+            <div class="res-span3 res-align-end"><button type="button" id="r-buscar" class="btn btn-primary res-full">Ver disponibilidad</button></div>
+          </div>
+          <p class="res-hint">La fecha de nacimiento aplica el suplemento de conductor joven y el código de promoción su descuento, si corresponden.</p>
+          <div class="res-filter" hidden>
+            <input id="r-filtro" type="search" placeholder="Filtrar por grupo, nombre o tarifa…" />
+          </div>
+          <div id="r-opciones" class="res-options"></div>
+        </section>
+
+        <!-- Paso 2: conductor -->
+        <section data-res-step="2" hidden>
+          <div id="r-elegida" class="res-chosen"></div>
+          <div class="res-grid">
+            <div><label for="r-nombre">Nombre *</label><input id="r-nombre" maxlength="20" /></div>
+            <div class="res-span2"><label for="r-apellidos">Apellidos *</label><input id="r-apellidos" maxlength="24" /></div>
+            <div><label for="r-email">Email</label><input id="r-email" type="email" maxlength="45" /></div>
+            <div><label for="r-movil">Móvil</label><input id="r-movil" maxlength="15" /></div>
+            <div><label for="r-vuelo">Vuelo</label><input id="r-vuelo" maxlength="10" /></div>
+            <div class="res-span2"><label for="r-ref">Referencia / voucher del broker <small>(opcional)</small></label><input id="r-ref" maxlength="30" autocomplete="off" placeholder="Vacío = se genera una automática" /></div>
+            <div class="res-span3"><label for="r-obs">Observaciones</label><input id="r-obs" maxlength="250" /></div>
+          </div>
+          <p class="res-hint">Solo el nombre y los apellidos son obligatorios para Rentway (se envían como "Apellidos,Nombre").</p>
+        </section>
+
+        <!-- Paso 3: revisión -->
+        <section data-res-step="3" hidden>
+          <div id="r-resumen" class="res-summary"></div>
+        </section>
+
+        <!-- Paso 4: resultado -->
+        <section data-res-step="4" hidden>
+          <div id="r-resultado" class="res-result"></div>
+        </section>
+
+        <!-- Buscar reserva -->
+        <section data-res-step="buscar" hidden>
+          <div class="res-grid">
+            <div><label for="l-broker">Broker</label><select id="l-broker"></select></div>
+            <div><label for="l-numero">Nº de reserva Rentway</label><input id="l-numero" inputmode="numeric" /></div>
+            <div class="res-align-end"><button type="button" id="l-consultar" class="btn btn-primary res-full">Consultar</button></div>
+          </div>
+          <div id="l-resultado" class="res-result"></div>
+        </section>
+      </div>
+
+      <div class="modal-footer" id="res-footer">
+        <button type="button" id="res-atras" class="btn btn-ghost" hidden>Atrás</button>
+        <button type="button" id="res-siguiente" class="btn btn-primary" hidden>Revisar</button>
+        <button type="button" id="res-crear" class="btn btn-primary" hidden>Crear reserva</button>
+        <button type="button" id="res-otra" class="btn btn-ghost" hidden>Nueva reserva</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
   <footer class="footer">
@@ -205,8 +287,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js?v=1"></script>
-  <script src="js/auth.js?v=2"></script>
-  <script src="js/app.js?v=10"></script>
+  <script src="js/auth.js?v=3"></script>
+  <script src="js/app.js?v=13"></script>
+  <script src="js/reservas.js?v=2"></script>
 </body>
 
 </html>

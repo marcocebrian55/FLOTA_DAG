@@ -396,7 +396,10 @@ function bindEvents() {
 // ============================================
 // Cotizador multi-modelo (SOAP Jimpisoft)
 // ============================================
-const PRICE_WS_URL = "https://small-moon-0352.mcebrian-334.workers.dev";
+// En local (py server.py) las llamadas van al servidor propio, que tiene las
+// credenciales de cada broker; publicado, al Worker de Cloudflare.
+const IS_LOCAL = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const PRICE_WS_URL = IS_LOCAL ? "/api/precios" : "https://small-moon-0352.mcebrian-334.workers.dev";
 const PRICE_CONCURRENCY = 4;
 
 const RENTWAY_ERRORS = {
@@ -427,12 +430,30 @@ document.addEventListener("DOMContentLoaded", () => {
   if (pickupEl) { pickupEl.value = iso(pickupDefault); pickupEl.min = iso(pickupDefault); }
   if (dropoffEl) { dropoffEl.value = iso(dropoffDefault); dropoffEl.min = iso(addDays(today, 2)); }
   if (btn) btn.addEventListener("click", obtenerPrecios);
+  if (IS_LOCAL && providerEl) loadBrokers(providerEl);
 
   // Al cambiar fechas, oficina o proveedor, los precios mostrados quedan obsoletos
   [pickupEl, dropoffEl, stationEl, providerEl].forEach(el => {
     if (el) el.addEventListener("change", clearPrices);
   });
 });
+
+// Rellena el selector de proveedor con los brokers de brokers.ini
+async function loadBrokers(select) {
+  try {
+    const res = await fetch("/api/brokers", { cache: "no-store" });
+    const brokers = await res.json();
+    state.brokers = brokers;
+    if (!brokers.length) return;
+    select.innerHTML = brokers.map(b =>
+      `<option value="${escapeHtml(b.id)}" ${b.activo ? "" : "disabled"}>${escapeHtml(b.nombre)}${b.activo ? "" : " (pendiente credenciales)"}</option>`
+    ).join("");
+    const first = brokers.find(b => b.activo);
+    if (first) select.value = first.id;
+  } catch (err) {
+    console.error("Error cargando brokers:", err);
+  }
+}
 
 function clearPrices() {
   state.prices = {};
@@ -629,7 +650,7 @@ async function obtenerPrecios() {
   const pickupDate = document.getElementById("q-pickup").value;
   const dropoffDate = document.getElementById("q-dropoff").value;
   const station = document.getElementById("q-station").value || "LPA";
-  const provider = document.getElementById("q-provider")?.value || "booking";
+  const provider = document.getElementById("q-provider")?.value || "directo";
 
   if (!pickupDate || !dropoffDate) { showToast("Indica fecha de recogida y devolución"); return; }
   if (new Date(dropoffDate) <= new Date(pickupDate)) {

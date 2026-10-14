@@ -105,6 +105,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("login-form")?.addEventListener("submit", handleLogin);
   document.getElementById("btn-logout")?.addEventListener("click", handleLogout);
 
+  // En local (py server.py) no hay login: el servidor solo escucha en 127.0.0.1,
+  // así que únicamente se puede abrir desde este mismo PC.
+  if (["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+    showApp(null);
+    document.getElementById("session-user").textContent = "Local";
+    document.getElementById("btn-logout")?.setAttribute("hidden", "");
+    return;
+  }
+
   const sb = getSupabase();
   if (!sb) {
     setLoginError("Configuración de Supabase incompleta. Revisa js/config.js.");

@@ -11,3 +11,8 @@ data/
 # Salida del scraper de competencia — se sirve desde el bucket privado, no desde Pages.
 scraper/*-prices.json
 scraper/node_modules/
+
+# Credenciales de brokers (servidor local)
+brokers.ini
+__pycache__/
+reservas.log

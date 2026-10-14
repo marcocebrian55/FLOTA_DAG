@@ -1054,3 +1054,76 @@ body {
 @media (max-width: 720px) {
   .filters { grid-template-columns: 1fr 1fr; }
 }
+/* ============================================
+   Reservas en Rentway (modal, solo en local)
+   ============================================ */
+.res-modal-content { max-width: 980px; max-height: 92vh; }
+.res-tabs { display: flex; gap: 6px; }
+.res-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+.res-span2 { grid-column: span 2; }
+.res-span3 { grid-column: 1 / -1; }
+.res-align-end { display: flex; align-items: flex-end; }
+.res-full { width: 100%; }
+.res-hint { font-size: 12px; color: var(--text-muted); margin: 10px 0 0; }
+.res-muted { color: var(--text-muted); }
+.res-error { color: var(--danger); margin-top: 14px; }
+.res-filter { margin-top: 16px; }
+.res-options { margin-top: 12px; }
+
+.res-env {
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+  border: 1px solid;
+}
+.res-env-prod { color: var(--danger); border-color: var(--danger); background: rgba(248, 113, 113, 0.08); font-weight: 600; }
+.res-env-test { color: var(--warning); border-color: var(--warning); background: rgba(251, 191, 36, 0.08); }
+
+.res-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.res-table th {
+  text-align: left; font-weight: 600; color: var(--text-muted);
+  padding: 8px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-elevated);
+}
+.res-table td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.res-table tr:hover td { background: var(--bg-card); }
+.res-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.res-table .btn { padding: 6px 12px; font-size: 12px; }
+.res-tag {
+  display: inline-block; font-size: 11px; padding: 2px 6px; border-radius: 4px;
+  background: var(--bg-card); border: 1px solid var(--border); white-space: nowrap;
+}
+
+.res-chosen {
+  font-size: 13px; padding: 10px 14px; margin-bottom: 14px;
+  background: var(--bg-card); border-left: 3px solid var(--accent); border-radius: var(--radius-sm);
+}
+.res-kv { width: 100%; border-collapse: collapse; font-size: 14px; }
+.res-kv th { text-align: left; color: var(--text-muted); font-weight: 500; padding: 7px 12px 7px 0; width: 160px; vertical-align: top; }
+.res-kv td { padding: 7px 0; border-bottom: 1px solid var(--border); }
+
+.res-ok-box, .res-error-box, .res-warn-box {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 16px 18px; border-radius: var(--radius); border: 1px solid; margin-bottom: 12px;
+}
+.res-ok-box { border-color: var(--success); background: rgba(74, 222, 128, 0.07); }
+.res-ok-small { padding: 10px 14px; margin-top: 12px; }
+.res-ok-label { font-size: 12px; color: var(--success); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.res-ok-num { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.res-error-box { border-color: var(--danger); background: rgba(248, 113, 113, 0.08); }
+.res-warn-box { border-color: var(--warning); background: rgba(251, 191, 36, 0.08); font-size: 13px; }
+.res-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.res-danger { color: var(--danger); }
+.res-danger:hover { border-color: var(--danger); }
+
+@media (max-width: 720px) {
+  .res-grid { grid-template-columns: 1fr; }
+  .res-span2, .res-span3 { grid-column: auto; }
+  .res-options { overflow-x: auto; }
+}
+/* .btn/.modal-footer fijan display y anularían el atributo hidden */
+#res-modal [hidden] { display: none !important; }
