@@ -29,6 +29,9 @@ function getSupabase() {
 async function downloadJSONFromBucket(path) {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase no configurado");
+  // En local se entra sin login; el bucket privado sí exige sesión
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error("SIN_SESION");
   const { data, error } = await sb.storage.from(FLOTA_BUCKET).download(path);
   if (error) throw error;
   return JSON.parse(await data.text());
@@ -55,8 +58,12 @@ function showApp(session) {
   if (!appInitialized && typeof window.initFlotaApp === "function") {
     appInitialized = true;
     window.initFlotaApp();
+  } else if (session && typeof window.onSessionReady === "function") {
+    // Local: se ha iniciado sesión con el panel ya abierto
+    window.onSessionReady();
   }
 }
+window.showLogin = showLogin;
 
 function setLoginError(msg) {
   const el = document.getElementById("login-error");
@@ -91,6 +98,7 @@ async function handleLogin(e) {
     setLoginError("Email o contraseña incorrectos.");
     return;
   }
+  document.getElementById("btn-logout")?.removeAttribute("hidden");
   showApp(data.session);
 }
 
@@ -105,16 +113,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("login-form")?.addEventListener("submit", handleLogin);
   document.getElementById("btn-logout")?.addEventListener("click", handleLogout);
 
-  // En local (py server.py) no hay login: el servidor solo escucha en 127.0.0.1,
-  // así que únicamente se puede abrir desde este mismo PC.
+  const sb = getSupabase();
+
+  // En local (py server.py) no hace falta login: el servidor solo escucha en 127.0.0.1,
+  // así que únicamente se puede abrir desde este mismo PC. La sesión de Supabase solo
+  // se pide para el modo Directa (tarifas internas en el bucket privado).
   if (["localhost", "127.0.0.1"].includes(window.location.hostname)) {
-    showApp(null);
-    document.getElementById("session-user").textContent = "Local";
-    document.getElementById("btn-logout")?.setAttribute("hidden", "");
+    const session = sb ? (await sb.auth.getSession()).data.session : null;
+    showApp(session);
+    if (!session) {
+      document.getElementById("session-user").textContent = "Local";
+      document.getElementById("btn-logout")?.setAttribute("hidden", "");
+    }
+    const cancel = document.getElementById("login-cancel");
+    if (cancel) {
+      cancel.hidden = false;
+      cancel.addEventListener("click", () => showApp(null));
+    }
     return;
   }
 
-  const sb = getSupabase();
   if (!sb) {
     setLoginError("Configuración de Supabase incompleta. Revisa js/config.js.");
     showLogin();

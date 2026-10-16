@@ -8,7 +8,7 @@ Uso:  py server.py          → http://localhost:8787
 
 Endpoints:
   GET  /api/brokers   lista de brokers configurados (sin credenciales)
-  POST /api/precios   {provider, groupID, pickupDate, dropoffDate, station}
+  POST /api/precios   {provider, groupID, pickupDate, dropoffDate, station, rateCode?}
                       → XML de Jimpisoft tal cual
   POST /api/disponibilidad {provider, recogida, devolucion ("AAAA-MM-DD HH:MM"),
                       oficina_recogida, oficina_devolucion, nacimiento?}
@@ -85,14 +85,20 @@ def base_url(b):
     return ENTORNOS.get(b["entorno"], ENTORNOS["produccion"])
 
 
-def post_soap(url, body, headers):
-    """Devuelve (status, bytes). Lanza excepción si no hay conexión."""
+def post_soap(url, body, headers, retries=0):
+    """Devuelve (status, bytes). Lanza excepción si no hay conexión.
+    retries: reintentos ante fallo de red. Solo para consultas: una reserva nunca se reenvía."""
     req = urllib.request.Request(url, data=body.encode("utf-8"), headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=60) as res:
             return res.status, res.read()
     except urllib.error.HTTPError as e:
         return e.code, e.read()
+    except (urllib.error.URLError, OSError):
+        if retries <= 0:
+            raise
+        time.sleep(1)
+        return post_soap(url, body, headers, retries - 1)
 
 
 def tag(name, value):
@@ -332,14 +338,17 @@ class Handler(SimpleHTTPRequestHandler):
 
     def precios(self, b, body):
         group, pu, do, st = (body.get(k) for k in ("groupID", "pickupDate", "dropoffDate", "station"))
+        rate = (body.get("rateCode") or "").strip().upper() or None  # vacío = la tarifa del broker (o todas)
         # Sin groupID, Rentway devuelve todos los grupos y tarifas disponibles para el broker
-        if not ((not group or is_code(group)) and is_code(st) and is_date(pu) and is_date(do)):
+        if not ((not group or is_code(group)) and (not rate or is_code(rate))
+                and is_code(st) and is_date(pu) and is_date(do)):
             return self.send_json({"error": "Parámetros no válidos"}, 400)
         try:
             status, xml = post_soap(
                 base_url(b) + "getMultiplePrices.asmx",
-                soap_prices(b, group, pu, do, st),
+                soap_prices(b, group, pu, do, st, rate=rate),
                 {"Content-Type": f'application/soap+xml; charset=utf-8; action="{PRICES_ACTION}"'},
+                retries=1,
             )
         except Exception as e:
             return self.send_json({"error": f"No se pudo contactar con Jimpisoft ({e.__class__.__name__})"}, 502)
@@ -365,6 +374,7 @@ class Handler(SimpleHTTPRequestHandler):
                 base_url(b) + "getMultiplePrices.asmx",
                 soap_prices(b, None, pu, do, sp, sd, dob, rate="", promo=promo),  # sin tarifa: todas las del broker
                 {"Content-Type": f'application/soap+xml; charset=utf-8; action="{PRICES_ACTION}"'},
+                retries=1,
             )
         except Exception as e:
             return self.send_json({"error": f"No se pudo contactar con Jimpisoft ({e.__class__.__name__})"}, 502)

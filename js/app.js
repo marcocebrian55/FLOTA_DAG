@@ -433,7 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (IS_LOCAL && providerEl) loadBrokers(providerEl);
 
   // Al cambiar fechas, oficina o proveedor, los precios mostrados quedan obsoletos
-  [pickupEl, dropoffEl, stationEl, providerEl].forEach(el => {
+  [pickupEl, dropoffEl, stationEl, providerEl, document.getElementById("q-brk-rate")].forEach(el => {
     if (el) el.addEventListener("change", clearPrices);
   });
 });
@@ -448,7 +448,10 @@ async function loadBrokers(select) {
     select.innerHTML = brokers.map(b =>
       `<option value="${escapeHtml(b.id)}" ${b.activo ? "" : "disabled"}>${escapeHtml(b.nombre)}${b.activo ? "" : " (pendiente credenciales)"}</option>`
     ).join("");
-    const first = brokers.find(b => b.activo);
+    // Por defecto el canal directo; el entorno de pruebas de Jimpisoft nunca (su empresa ya no existe)
+    const first = brokers.find(b => b.activo && b.id === "directo")
+      || brokers.find(b => b.activo && b.entorno !== "prueba")
+      || brokers.find(b => b.activo);
     if (first) select.value = first.id;
   } catch (err) {
     console.error("Error cargando brokers:", err);
@@ -466,6 +469,7 @@ function clearPrices() {
 state.mode = "directa";          // "directa" | "brokers"
 state.rateCodes = [];            // [{code, desc, brand}]
 state.ratesData = null;          // dataset completo (lazy)
+state.defaultRate = "ADTLPA";    // se aplica si el campo de tarifa se deja vacío
 
 document.addEventListener("DOMContentLoaded", () => {
   setupModeTabs();
@@ -499,6 +503,10 @@ async function loadRateCodes() {
   try {
     state.rateCodes = (await window.downloadJSONFromBucket("rate-codes.json")).codes || [];
   } catch (err) {
+    if (err.message === "SIN_SESION") {
+      if (descEl) descEl.textContent = "En local, el modo Directa necesita iniciar sesión (te la pedirá al obtener precios).";
+      return;
+    }
     console.error("Error cargando rate-codes.json:", err);
     showToast("No se pudo cargar el catálogo de tarifas");
     return;
@@ -515,7 +523,6 @@ async function loadRateCodes() {
 
   // Tarifa por defecto: se APLICA si el campo se deja vacío, pero NO se prerrellena,
   // porque el datalist nativo filtraría el desplegable a esa única coincidencia.
-  state.defaultRate = "ADTLPA";
   const def = state.rateCodes.find(c => c.code === state.defaultRate);
   const showNote = () => {
     if (!descEl) return;
@@ -543,6 +550,9 @@ async function loadRateCodes() {
   });
   input.addEventListener("input", () => { showNote(); clearPrices(); });
 }
+
+// Local: al iniciar sesión con el panel abierto se carga el catálogo que faltaba
+window.onSessionReady = () => { if (!state.rateCodes.length) loadRateCodes(); };
 
 async function ensureRatesData() {
   if (state.ratesData) return state.ratesData;
@@ -619,6 +629,11 @@ async function obtenerPreciosDirecta() {
     });
     showToast(`Precios calculados · ${code} (${targets.length} ${targets.length === 1 ? "modelo" : "modelos"})`);
   } catch (err) {
+    if (err.message === "SIN_SESION") {
+      showToast("Inicia sesión para usar las tarifas internas");
+      window.showLogin();
+      return;
+    }
     console.error("Error cálculo local:", err);
     showToast("No se pudieron calcular los precios");
   } finally {
@@ -651,6 +666,8 @@ async function obtenerPrecios() {
   const dropoffDate = document.getElementById("q-dropoff").value;
   const station = document.getElementById("q-station").value || "LPA";
   const provider = document.getElementById("q-provider")?.value || "directo";
+  const rateCode = (document.getElementById("q-brk-rate")?.value || "").trim().toUpperCase();
+  if (rateCode && !/^[A-Z0-9]{1,10}$/.test(rateCode)) { showToast("Código de tarifa no válido"); return; }
 
   if (!pickupDate || !dropoffDate) { showToast("Indica fecha de recogida y devolución"); return; }
   if (new Date(dropoffDate) <= new Date(pickupDate)) {
@@ -670,10 +687,13 @@ async function obtenerPrecios() {
   btn.classList.add("btn-disabled");
   btn.textContent = "Consultando…";
 
+  const seenRates = new Set();
   await runPool(targets, PRICE_CONCURRENCY, async v => {
-    state.prices[v.id] = await fetchVehiclePrice(v, { pickupDate, dropoffDate, station, provider });
+    state.prices[v.id] = await fetchVehiclePrice(v, { pickupDate, dropoffDate, station, provider, rateCode });
+    (state.prices[v.id].rates || []).forEach(r => seenRates.add(r));
     updateCardPrice(v.id);
   });
+  showBrokerRates([...seenRates].sort(), rateCode);
 
   btn.disabled = false;
   btn.classList.remove("btn-disabled");
@@ -689,14 +709,22 @@ async function runPool(items, size, worker) {
   await Promise.all(runners);
 }
 
-async function fetchVehiclePrice(v, { pickupDate, dropoffDate, station, provider }) {
-  // El Worker añade las credenciales del proveedor y construye el SOAP server-side.
+// Tarifas que ha devuelto Rentway en la última consulta: sugerencias para el campo Tarifa
+function showBrokerRates(rates, rateCode) {
+  const list = document.getElementById("brk-rate-list");
+  const desc = document.getElementById("brk-rate-desc");
+  if (list) list.innerHTML = rates.map(r => `<option value="${escapeHtml(r)}"></option>`).join("");
+  if (desc) desc.textContent = rateCode || !rates.length ? "" : `Disponibles: ${rates.join(", ")}`;
+}
+
+async function fetchVehiclePrice(v, { pickupDate, dropoffDate, station, provider, rateCode }) {
+  // El servidor (local o Worker) añade las credenciales del proveedor y construye el SOAP.
   try {
     const response = await fetch(PRICE_WS_URL, {
       method: "POST",
       cache: "no-store",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ provider, groupID: v.grupo, pickupDate, dropoffDate, station })
+      body: JSON.stringify({ provider, groupID: v.grupo, pickupDate, dropoffDate, station, rateCode })
     });
 
     // El Worker responde JSON en caso de error de configuración/proveedor
@@ -713,16 +741,28 @@ async function fetchVehiclePrice(v, { pickupDate, dropoffDate, station, provider
       return { error: RENTWAY_ERRORS[errorCode] || `Error: ${errorCode}` };
     }
 
-    const totalValue = parseFloat(xmlDoc.querySelector("previewValue")?.textContent || "0") || 0;
-    if (!totalValue) return { error: "Sin tarifa disponible" };
+    // Sin tarifa fija Rentway devuelve una fila por tarifa y paquete del broker:
+    // se queda la de la tarifa pedida (o la más barata), mejor sin paquete.
+    const field = (row, name) => row.getElementsByTagName(name)[0]?.textContent?.trim() || "";
+    const rows = [...xmlDoc.getElementsByTagName("MultiplePrices")]
+      .map(row => ({
+        rate: field(row, "rateCode"),
+        pkg: field(row, "package"),
+        total: parseFloat(field(row, "previewValue")) || 0,
+        day: parseFloat(field(row, "totalDayValueWithTax")) || 0,
+        days: parseInt(field(row, "nrDays"), 10) || 0
+      }))
+      .filter(r => r.total > 0 && (!rateCode || r.rate.toUpperCase() === rateCode));
+    const rates = [...new Set(rows.map(r => r.rate))];
+    if (!rows.length) return { error: rateCode ? `Sin precio con la tarifa ${rateCode}` : "Sin tarifa disponible" };
 
-    const daysText = xmlDoc.querySelector("nrDays")?.textContent;
+    const base = rows.filter(r => !r.pkg);
+    const best = (base.length ? base : rows).sort((a, b) => a.total - b.total)[0];
     const calcDays = Math.round((new Date(dropoffDate) - new Date(pickupDate)) / 86400000) || 1;
-    const days = daysText ? parseInt(daysText, 10) : calcDays;
-    const dailyValue = parseFloat(xmlDoc.querySelector("totalDayValueWithTax")?.textContent || "0") || (totalValue / days);
-    const actualRate = xmlDoc.querySelector("rateCode")?.textContent?.trim() || "";
+    const days = best.days || calcDays;
+    const label = best.rate + (best.pkg ? ` + ${best.pkg}` : "") + (!rateCode && rates.length > 1 ? " (la más barata)" : "");
 
-    return { dailyValue, totalValue, days, rateCode: actualRate };
+    return { dailyValue: best.day || best.total / days, totalValue: best.total, days, rateCode: label, rates };
   } catch (err) {
     console.error("Error cotizando", v.id, err);
     return { error: "Error de conexión" };

@@ -16,6 +16,18 @@ login: el servidor solo escucha en 127.0.0.1.
 broker con `company`, `customer`, `user`, `password`, `rate` (opcional, admite
 `{station}`) y `entorno` (`produccion` | `prueba`). Se relee en cada petición.
 
+## Tarificador en local
+
+- **Brokers**: precio en vivo por oficina + modelo (grupo) + tarifa. Si la tarifa se
+  deja vacía, Rentway devuelve todas las del broker y se muestra la más barata sin
+  paquete; tras consultar, el campo sugiere las tarifas disponibles. Por defecto se
+  elige el broker `directo` (nunca `prueba`, cuya empresa ya no existe).
+- **Directa** (tarifas internas): lee `rates.json` del bucket privado de Supabase, que
+  exige sesión. En local se entra sin login, así que al obtener precios en Directa se
+  pide iniciar sesión una vez (queda guardada); "Volver al panel" sigue sin ella.
+- Las consultas de precio reintentan una vez si falla la red; crear/cancelar reservas
+  nunca se reenvía.
+
 ## Flujo (botón "Reservas")
 
 1. Disponibilidad: `getMultiplePrices` sin grupo ni tarifa por oficina/fechas/horas

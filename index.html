@@ -32,6 +32,7 @@
         </div>
         <p id="login-error" class="login-error" hidden></p>
         <button type="submit" id="login-submit" class="btn btn-primary login-submit">Iniciar sesión</button>
+        <button type="button" id="login-cancel" class="btn btn-ghost login-submit" hidden>Volver al panel sin iniciar sesión</button>
       </form>
       <p class="login-foot">Herramienta interna · creada por Marirrodriga S.L.</p>
     </div>
@@ -122,11 +123,18 @@
             <option value="VDE">El Hierro Aeropuerto (VDE)</option>
           </select>
         </div>
+        <div class="quote-field quote-field-grow" data-mode="brokers" hidden>
+          <label for="q-brk-rate">Tarifa</label>
+          <input type="text" id="q-brk-rate" class="input" list="brk-rate-list" autocomplete="off"
+            placeholder="Vacío = la más barata (ej. ADTLPA)" />
+          <datalist id="brk-rate-list"></datalist>
+          <small id="brk-rate-desc" class="quote-field-note"></small>
+        </div>
 
         <button id="btn-get-prices" class="btn btn-primary">Obtener precios</button>
       </div>
       <p class="quote-hint" data-mode="directa">Modo Directa: calcula precios desde las tarifas internas de Rentway. El código ya incluye la oficina y la marca. Selecciona modelos abajo, o ninguno para toda la flota.</p>
-      <p class="quote-hint" data-mode="brokers" hidden>Modo Brokers: consulta el precio en vivo del canal seleccionado (SOAP). Selecciona modelos abajo, o ninguno para toda la flota.</p>
+      <p class="quote-hint" data-mode="brokers" hidden>Modo Brokers: consulta el precio en vivo del canal seleccionado (SOAP), con la tarifa indicada o la más barata disponible. Selecciona modelos abajo, o ninguno para toda la flota.</p>
     </section>
 
     <section class="kpis">
@@ -287,8 +295,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js?v=1"></script>
-  <script src="js/auth.js?v=3"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="js/auth.js?v=4"></script>
+  <script src="js/app.js?v=16"></script>
   <script src="js/reservas.js?v=2"></script>
 </body>
 
