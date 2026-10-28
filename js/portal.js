@@ -24,8 +24,8 @@
   const s = {
     lang: params.get("lang") || guardado.get("lang") || "es",
     marca: params.get("marca") || guardado.get("marca") || "avis",
-    agencia: guardado.get("agencia") || "",
-    agencias: [],
+    agencia: "", yo: null,
+    adm: null,
     consulta: null, opciones: [], grupos: {}, cat: "",
     elegida: null, extras: [], sel: {}, enviando: false, ultima: null,
     reservas: [], facturas: [],
@@ -49,12 +49,116 @@
     clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 3500);
   }
 
+  // La agencia y su cliente de Rentway los pone el servidor a partir de la sesión;
+  // "agencia" solo sirve para que un responsable/admin elija entre las que puede ver.
   async function api(path, body) {
     const res = await fetch(path, {
-      method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ provider: s.agencia, ...body }),
+      method: "POST", cache: "no-store", credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-Portal": "1" },
+      body: JSON.stringify({ agencia: s.agencia, ...body }),
     });
-    return res.json();
+    const data = await res.json();
+    if (res.status === 401) mostrarLogin();
+    return data;
+  }
+
+  /* ---------------------------------------------------------------- sesión */
+  function mostrarLogin(msg) {
+    s.yo = null;
+    $("login").hidden = false;
+    $("lg-error").hidden = !msg; $("lg-error").textContent = msg || "";
+    setTimeout(() => $("lg-email").focus(), 50);
+  }
+
+  async function sesion(agencia) {
+    try {
+      const res = await fetch("/api/yo" + (agencia ? "?agencia=" + encodeURIComponent(agencia) : ""), { cache: "no-store" });
+      if (res.status === 401) return mostrarLogin();
+      aplicarSesion(await res.json());
+    } catch { toast(t("error_red")); }
+  }
+
+  function aplicarSesion(yo) {
+    s.yo = yo; s.agencia = yo.agencia.id;
+    $("login").hidden = true;
+    $("p-user").textContent = yo.nombre || yo.email;
+    $("p-user").title = `${yo.email} · ${t("rol_" + yo.rol)}`;
+    const varias = yo.agencias.length > 1;
+    $("p-agencia-wrap").hidden = !varias;
+    $("p-agencia-fija").hidden = varias;
+    $("p-agencia-fija").textContent = yo.agencia.nombre;
+    $("p-agencia").innerHTML = yo.agencias.map(a => `<option value="${esc(a.id)}">${a.padre ? "— " : ""}${esc(a.nombre)}</option>`).join("");
+    $("p-agencia").value = s.agencia;
+    // Facturas: solo responsables de la agencia titular del cliente Rentway; Administración: no agentes
+    document.querySelector("[data-vista=facturas]").hidden = yo.rol === "agente" || !yo.agencia.titular;
+    document.querySelector("[data-vista=admin]").hidden = yo.rol === "agente";
+    pintarPagos();
+    if (yo.debe_cambiar) abrirClave(true);
+  }
+
+  function pintarPagos() {
+    if (!s.yo) return;
+    const pagos = s.yo.agencia.pagos || ["destino"];
+    $$("input[name=pago]").forEach(r => {
+      const ok = pagos.includes(r.value) && r.value !== "prepago";  // prepago: hasta que haya pasarela
+      r.disabled = !ok;
+      r.closest("label").hidden = !pagos.includes(r.value);
+      r.closest("label").classList.toggle("p-off", !ok);
+    });
+    const marcado = document.querySelector("input[name=pago]:checked");
+    if (!marcado || marcado.disabled) {
+      const primero = [...$$("input[name=pago]")].find(r => !r.disabled);
+      if (primero) primero.checked = true;
+    }
+    const c = s.yo.agencia.credito_info;
+    $("c-credito").hidden = !c;
+    if (c) $("c-credito").innerHTML = `${t("credito_disp")}: <strong>${money(c.disponible)}</strong> / ${money(c.limite)}`;
+  }
+
+  async function entrar(e) {
+    e.preventDefault();
+    const btn = $("lg-entrar"); btn.disabled = true;
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: $("lg-email").value.trim(), clave: $("lg-clave").value }),
+      });
+      const data = await res.json();
+      if (!res.ok) { $("lg-error").hidden = false; $("lg-error").textContent = data.error || t("error_red"); return; }
+      $("lg-clave").value = "";
+      reiniciar();
+      aplicarSesion(data);
+    } catch { $("lg-error").hidden = false; $("lg-error").textContent = t("error_red"); }
+    finally { btn.disabled = false; }
+  }
+
+  async function salir() {
+    $("p-user-menu").hidden = true;
+    try { await fetch("/api/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); } catch { /* da igual */ }
+    reiniciar(); mostrarLogin();
+  }
+
+  function abrirClave(obligatorio) {
+    $("p-user-menu").hidden = true;
+    $("f-clave").reset(); $("mc-error").hidden = true;
+    $("mc-cancelar").hidden = !!obligatorio;
+    $("mc-nota").textContent = obligatorio ? t("clave_primera") : t("clave_nota");
+    $("m-clave").classList.remove("hidden");
+  }
+
+  async function guardarClave(e) {
+    e.preventDefault();
+    const err = msg => { $("mc-error").hidden = false; $("mc-error").textContent = msg; };
+    if ($("mc-nueva").value !== $("mc-repite").value) return err(t("clave_no_coincide"));
+    const res = await fetch("/api/clave", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actual: $("mc-actual").value, nueva: $("mc-nueva").value }),
+    });
+    const data = await res.json();
+    if (!res.ok) return err(data.error);
+    $("m-clave").classList.add("hidden");
+    if (s.yo) s.yo.debe_cambiar = false;
+    toast(t("clave_ok"));
   }
 
   // Errores de Rentway más comunes, traducidos
@@ -92,7 +196,18 @@
 
     $("p-lang").addEventListener("change", e => { s.lang = e.target.value; guardado.set("lang", s.lang); aplicarIdioma(); repintar(); });
     $("p-marca").addEventListener("change", e => { s.marca = e.target.value; guardado.set("marca", s.marca); aplicarMarca(); });
-    $("p-agencia").addEventListener("change", e => { s.agencia = e.target.value; guardado.set("agencia", s.agencia); reiniciar(); });
+    $("p-agencia").addEventListener("change", e => { reiniciar(); sesion(e.target.value); });
+    $("f-login").addEventListener("submit", entrar);
+    $("p-user").addEventListener("click", () => { $("p-user-menu").hidden = !$("p-user-menu").hidden; });
+    $("p-salir").addEventListener("click", salir);
+    $("p-cambiar-clave").addEventListener("click", () => abrirClave(false));
+    $("f-clave").addEventListener("submit", guardarClave);
+    $("mc-cancelar").addEventListener("click", () => $("m-clave").classList.add("hidden"));
+    $("f-usuario").addEventListener("submit", guardarUsuario);
+    $("f-agencia").addEventListener("submit", guardarAgencia);
+    $("au-limpiar").addEventListener("click", () => editarUsuario(null));
+    $("aa-limpiar").addEventListener("click", () => editarAgencia(null));
+    document.querySelector("[data-vista=admin]").addEventListener("click", cargarAdmin);
     $$("[data-vista]").forEach(b => b.addEventListener("click", () => vista(b.dataset.vista)));
 
     $("b-of-rec").addEventListener("change", () => { $("b-of-dev").value = $("b-of-rec").value; });
@@ -117,19 +232,8 @@
     $("m-detalle").addEventListener("click", e => { if (e.target.id === "m-detalle") cerrarModal(); });
     document.addEventListener("keydown", e => { if (e.key === "Escape") cerrarModal(); });
 
-    await cargarAgencias();
+    await sesion();
   });
-
-  async function cargarAgencias() {
-    try {
-      const res = await fetch("/api/brokers", { cache: "no-store" });
-      s.agencias = (await res.json()).filter(b => b.activo && b.entorno !== "prueba");
-    } catch { s.agencias = []; }
-    $("p-agencia").innerHTML = s.agencias.map(b => `<option value="${esc(b.id)}">${esc(b.nombre)}</option>`).join("");
-    if (!s.agencias.some(b => b.id === s.agencia)) s.agencia = s.agencias[0]?.id || "";
-    $("p-agencia").value = s.agencia;
-    if (!s.agencias.length) toast(t("error_red"));
-  }
 
   function aplicarMarca() {
     const m = PORTAL.marcas[s.marca] || PORTAL.marcas.avis;
@@ -138,6 +242,7 @@
     r.setProperty("--brand", m.color); r.setProperty("--brand-dark", m.colorOscuro);
     r.setProperty("--brand-ink", m.texto); r.setProperty("--brand-accent", m.acento || m.color);
     $("p-logo").textContent = m.nombre;
+    $$("[data-logo-marca]").forEach(el => { el.textContent = m.nombre; });
     document.title = `${m.nombre} · ${t("portal")}`;
   }
 
@@ -156,6 +261,8 @@
     if (s.elegida) { pintarElegida(); pintarExtras(); pintarTotal(); }
     if (s.reservas.length) pintarListado();
     if (s.facturas.length) pintarFacturas();
+    pintarPagos();
+    if (s.adm) pintarAdmin();
   }
 
   function reiniciar() {
@@ -163,6 +270,7 @@
     $("b-resultados").innerHTML = ""; $("b-filtros").hidden = true;
     $("l-resultado").innerHTML = ""; $("l-barra").hidden = true;
     $("fa-resultado").innerHTML = ""; $("fa-barra").hidden = true;
+    s.adm = null; vista("buscar");
     paso(1);
   }
 
@@ -394,7 +502,7 @@
       accion: "N", grupo: o.grupo, tarifa: o.tarifa, paquete: o.paquete,
       oficina_recogida: q.oficina_recogida, oficina_devolucion: q.oficina_devolucion,
       recogida: q.recogida, devolucion: q.devolucion, nacimiento: q.nacimiento, promocion: q.promocion,
-      extras, pago: document.querySelector("input[name=pago]:checked")?.value || "destino",
+      extras, pago: document.querySelector("input[name=pago]:checked")?.value || "destino", total_estimado: totalEstimado().total,
       referencia: $("c-ref").value.trim(),
       nombre: $("c-nombre").value.trim(), apellidos: $("c-apellidos").value.trim(),
       pais: $("c-pais").value, tipo_documento: $("c-tipo-doc").value, documento: $("c-doc").value.trim(),
@@ -498,7 +606,7 @@
 
   function imprimirBono(r) {
     const m = PORTAL.marcas[s.marca] || PORTAL.marcas.avis, logo = logoAgencia();
-    const agencia = (s.agencias.find(a => a.id === s.agencia) || {}).nombre || "";
+    const agencia = s.yo?.agencia.nombre || "";
     const fila = (k, v) => v ? `<tr><th>${esc(k)}</th><td>${v}</td></tr>` : "";
     const pagos = { destino: t("pago_destino"), credito: t("pago_credito"), prepago: t("pago_prepago") };
     $("bono").innerHTML = `
@@ -741,5 +849,109 @@
         t("col_cliente"), t("col_base"), t("col_iva"), t("col_total"), t("col_pagado")],
       s.facturas.map(f => [f.numero, f.fecha, f.vencimiento, f.reserva, f.contrato, f.referencia, f.voucher, f.conductor,
         f.base, f.iva, f.total, f.pagado]));
+  }
+
+  /* ---------------------------------------------------------------- administración */
+  async function cargarAdmin() {
+    try {
+      const res = await fetch("/api/admin", { cache: "no-store" });
+      if (res.status === 401) return mostrarLogin();
+      s.adm = await res.json();
+      if (!res.ok) { $("ad-usuarios").innerHTML = `<p class="p-error">${esc(s.adm.error)}</p>`; s.adm = null; return; }
+      pintarAdmin();
+    } catch { toast(t("error_red")); }
+  }
+
+  const nombreAgencia = id => (s.adm?.agencias.find(a => a.id === id) || {}).nombre || id || "—";
+
+  function pintarAdmin() {
+    const esAdmin = s.yo?.rol === "admin", a = s.adm;
+    $("ad-agencia-box").hidden = !esAdmin;
+    // un responsable no puede crear administradores
+    document.querySelector("#au-rol option[value=admin]").hidden = !esAdmin;
+    $("au-agencia").innerHTML = a.agencias.map(x => `<option value="${esc(x.id)}">${esc(x.nombre)}</option>`).join("");
+    $("aa-padre").innerHTML = `<option value="">${t("ninguna")}</option>` + a.agencias.map(x => `<option value="${esc(x.id)}">${esc(x.nombre)}</option>`).join("");
+    $("aa-broker").innerHTML = `<option value="">${t("heredar")}</option>` + (a.brokers || []).map(b => `<option value="${esc(b.id)}">${esc(b.nombre)}</option>`).join("");
+    $("ad-usuarios").innerHTML = a.usuarios.length ? `<div class="p-table-wrap"><table class="p-table">
+      <thead><tr><th>${t("email")}</th><th>${t("nombre")}</th><th>${t("agencia")}</th><th>${t("rol")}</th><th>${t("estado_u")}</th><th>${t("ultimo_acceso")}</th><th></th></tr></thead>
+      <tbody>${a.usuarios.map(u => `<tr>
+        <td>${esc(u.email)}</td><td>${esc(u.nombre)}</td><td>${esc(u.rol === "admin" && !u.agencia ? "—" : nombreAgencia(u.agencia))}</td>
+        <td>${t("rol_" + u.rol)}</td>
+        <td>${u.activo ? (u.debe_cambiar ? `<span class="p-tag">${t("pendiente_clave")}</span>` : `<span class="p-tag p-tag-ok">${t("activo")}</span>`) : `<span class="p-tag p-tag-off">${t("inactivo")}</span>`}</td>
+        <td>${esc(u.ultimo_acceso || "—")}</td>
+        <td><button type="button" class="p-btn p-btn-sm" data-edit-u="${esc(u.email)}">${t("editar")}</button></td>
+      </tr>`).join("")}</tbody></table></div>` : `<p class="p-muted">—</p>`;
+    $("ad-agencias").innerHTML = a.agencias.length ? `<div class="p-table-wrap"><table class="p-table">
+      <thead><tr><th>${t("agencia")}</th><th>${t("agencia_superior")}</th><th>${t("cliente_rentway")}</th><th>${t("formas_pago")}</th><th class="num">${t("limite_credito_c")}</th><th>${t("estado_u")}</th><th></th></tr></thead>
+      <tbody>${a.agencias.map(x => `<tr>
+        <td><strong>${esc(x.nombre)}</strong><br><small class="p-muted">${esc(x.id)}</small></td>
+        <td>${esc(x.padre ? nombreAgencia(x.padre) : "—")}</td><td>${esc(x.broker || t("heredar"))}</td>
+        <td>${(x.pagos || []).map(p => t("pago_" + p)).join(", ")}</td>
+        <td class="num">${x.credito === null || x.credito === undefined ? "—" : money(x.credito)}</td>
+        <td>${x.activa === false ? `<span class="p-tag p-tag-off">${t("inactiva")}</span>` : `<span class="p-tag p-tag-ok">${t("activa")}</span>`}</td>
+        <td>${esAdmin ? `<button type="button" class="p-btn p-btn-sm" data-edit-a="${esc(x.id)}">${t("editar")}</button>` : ""}</td>
+      </tr>`).join("")}</tbody></table></div>` : `<p class="p-muted">${t("sin_agencias")}</p>`;
+    $("ad-usuarios").querySelectorAll("[data-edit-u]").forEach(b => b.addEventListener("click", () => editarUsuario(b.dataset.editU)));
+    $("ad-agencias").querySelectorAll("[data-edit-a]").forEach(b => b.addEventListener("click", () => editarAgencia(b.dataset.editA)));
+  }
+
+  function editarUsuario(email) {
+    const u = email && s.adm.usuarios.find(x => x.email === email);
+    $("f-usuario").reset(); $("au-res").innerHTML = "";
+    $("ad-u-titulo").textContent = u ? t("editar_usuario") : t("nuevo_usuario");
+    $("au-email").readOnly = !!u;
+    $("au-reset-wrap").hidden = !u;
+    if (u) {
+      $("au-email").value = u.email; $("au-nombre").value = u.nombre || "";
+      if (u.agencia) $("au-agencia").value = u.agencia;
+      $("au-rol").value = u.rol; $("au-activo").checked = !!u.activo;
+    }
+    $("f-usuario").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function editarAgencia(id) {
+    const a = id && s.adm.agencias.find(x => x.id === id);
+    $("f-agencia").reset(); $("aa-res").innerHTML = "";
+    $("ad-a-titulo").textContent = a ? t("editar_agencia") : t("nueva_agencia");
+    $("aa-id").readOnly = !!a;
+    if (a) {
+      $("aa-id").value = a.id; $("aa-nombre").value = a.nombre; $("aa-padre").value = a.padre || "";
+      $("aa-broker").value = a.broker || ""; $("aa-credito").value = a.credito ?? ""; $("aa-activa").checked = a.activa !== false;
+      $$("input[name=aa-pago]").forEach(c => { c.checked = (a.pagos || []).includes(c.value); });
+    }
+    $("f-agencia").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  async function postAdmin(path, body) {
+    const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.status === 401) mostrarLogin();
+    return [res.ok, await res.json()];
+  }
+
+  async function guardarUsuario(e) {
+    e.preventDefault();
+    const [ok, data] = await postAdmin("/api/admin/usuario", {
+      email: $("au-email").value.trim(), nombre: $("au-nombre").value.trim(), agencia: $("au-agencia").value,
+      rol: $("au-rol").value, activo: $("au-activo").checked, resetear: $("au-reset").checked,
+    });
+    if (!ok) { $("au-res").innerHTML = `<p class="p-error">${esc(data.error)}</p>`; return; }
+    await cargarAdmin();
+    // La contraseña temporal solo se enseña aquí, una vez: el servidor guarda solo su huella
+    $("au-res").innerHTML = data.temporal
+      ? `<div class="p-card p-warn">${t("temporal")}: <code class="p-code">${esc(data.temporal)}</code><br><small>${t("temporal_nota")}</small></div>`
+      : `<p class="p-ok-txt">${t("guardado")}</p>`;
+  }
+
+  async function guardarAgencia(e) {
+    e.preventDefault();
+    const [ok, data] = await postAdmin("/api/admin/agencia", {
+      id: $("aa-id").value.trim().toLowerCase(), nombre: $("aa-nombre").value.trim(), padre: $("aa-padre").value,
+      broker: $("aa-broker").value, credito: $("aa-credito").value, activa: $("aa-activa").checked,
+      pagos: [...$$("input[name=aa-pago]:checked")].map(c => c.value),
+    });
+    if (!ok) { $("aa-res").innerHTML = `<p class="p-error">${esc(data.error)}</p>`; return; }
+    await cargarAdmin();
+    await sesion(s.agencia);  // por si cambió la propia agencia (pagos, crédito)
+    $("aa-res").innerHTML = `<p class="p-ok-txt">${t("guardado")}</p>`;
   }
 })();

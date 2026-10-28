@@ -199,3 +199,27 @@ input, select, textarea { font: inherit; color: inherit; }
   .b-nota { margin-top: 8mm; padding: 4mm; border: 0.3mm solid #999; }
   .b-pie { color: #666; font-size: 9pt; margin-top: 6mm; }
 }
+
+/* ---------- acceso y administración ---------- */
+.p-login { position: fixed; inset: 0; z-index: 40; background: var(--brand); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.p-login-card { background: #fff; border-radius: 12px; padding: 28px; width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; }
+.p-login-card label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.p-login-card input { padding: 10px; border: 1px solid var(--line); border-radius: 7px; font: inherit; color: var(--ink); }
+.p-login-brand { display: flex; align-items: baseline; gap: 10px; color: var(--ink); margin-bottom: 6px; }
+.p-login-brand .p-logo { color: var(--brand); }
+.p-login-pie { font-size: 12.5px; margin: 0; }
+.p-user-wrap { position: relative; }
+.p-user { background: rgba(255, 255, 255, 0.18); color: inherit; border: 0; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13.5px; cursor: pointer; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-user-menu { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15); display: flex; flex-direction: column; min-width: 190px; z-index: 15; overflow: hidden; }
+.p-user-menu button { background: none; border: 0; text-align: left; padding: 10px 14px; font: inherit; color: var(--ink); cursor: pointer; }
+.p-user-menu button:hover { background: var(--bg); }
+#p-agencia-fija { font-weight: 600; }
+.p-credito { margin: 8px 0 0; font-size: 14px; }
+.p-form-1 { grid-template-columns: 1fr; }
+.p-fieldset { border: 1px solid var(--line); border-radius: 7px; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
+.p-fieldset legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
+.p-aside-static { position: static !important; }
+.p-modal-sm { max-width: 420px; display: grid; gap: 12px; }
+.p-code { font-family: Consolas, monospace; font-size: 16px; background: #fff; padding: 2px 6px; border-radius: 4px; user-select: all; }
+.p-ok-txt { color: var(--ok); margin: 6px 0 0; }
+#ad-usuarios .p-table td, #ad-agencias .p-table td, #ad-usuarios .p-table th, #ad-agencias .p-table th { white-space: normal; }

@@ -16,3 +16,7 @@ scraper/node_modules/
 brokers.ini
 __pycache__/
 reservas.log
+
+# Usuarios y sesiones del portal de agencias
+portal_datos.json
+portal_datos.tmp

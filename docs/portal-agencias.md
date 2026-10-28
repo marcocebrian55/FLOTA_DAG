@@ -8,6 +8,28 @@ Alternativa propia al microsite de reservas para agencias, sobre el servidor loc
   tarifas, comisiones y condiciones. En la fase 1 vendrá del inicio de sesión.
 - Las reservas se crean en el **Rentway real**.
 
+## Acceso (fase 1)
+
+- Cada usuario entra con email y contraseña. Usuarios, agencias y sesiones en `portal_datos.json`
+  (no se sube a git; otra ruta con `PORTAL_DATOS`). Lógica en `portal_auth.py`.
+- Primer administrador: `py server.py --usuario correo@empresa.com --rol admin [--agencia id]`
+  → imprime una contraseña temporal que hay que cambiar al entrar.
+- Roles: **admin** (interno: agencias, usuarios, actúa como cualquier agencia) · **responsable**
+  (su agencia y sucursales; da de alta agentes; ve facturas si su agencia es la titular del cliente
+  Rentway) · **agente** (solo su agencia).
+- Jerarquía sede → sucursales. Una sucursal sin cliente Rentway usa el de su sede.
+- La agencia y su cliente de Rentway los decide el servidor a partir de la sesión: el navegador no
+  puede elegir otro broker.
+- Visibilidad: cada agencia ve las reservas que crearon ella o sus sucursales (registro local); la
+  agencia titular del cliente Rentway ve además las que Rentway liste de ese cliente.
+- Formas de pago por agencia; crédito con límite por agencia (se hereda hacia las sucursales). El
+  consumo se calcula con las reservas a crédito vivas del registro — PROVISIONAL hasta decidir la
+  fuente buena (Navision).
+- Seguridad: contraseñas PBKDF2, cookie HttpOnly + SameSite=Strict, bloqueo 15 min tras 5 fallos,
+  sesiones de 12 h, desactivar un usuario o cambiarle la contraseña cierra sus sesiones.
+- `PORTAL_PUBLICO=1` (para cuando se publique): todo exige sesión, cookie Secure (HTTPS) y el panel
+  interno deja de servirse. El panel local sin sesión sigue funcionando como antes.
+
 ## Qué hace
 
 | Pantalla | Servicio de Rentway | Estado |

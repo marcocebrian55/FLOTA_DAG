@@ -5,12 +5,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Portal de agencias</title>
-  <link rel="stylesheet" href="css/portal.css?v=1" />
+  <link rel="stylesheet" href="css/portal.css?v=2" />
 </head>
 
-<!-- Portal B2B para agencias (fase 0: solo con el servidor local, py server.py).
+<!-- Portal B2B para agencias (servidor local, py server.py; acceso con usuario de agencia).
      Marca por URL: portal.html?marca=avis | budget | xtravans · idioma: ?lang=en -->
 <body data-marca="avis">
+
+  <!-- ============ ACCESO ============ -->
+  <div id="login" class="p-login" hidden>
+    <form class="p-login-card" id="f-login" autocomplete="on">
+      <div class="p-login-brand"><span class="p-logo" data-logo-marca>AVIS</span><span data-i18n="portal">Portal de agencias</span></div>
+      <label><span data-i18n="email">Email</span><input type="email" id="lg-email" autocomplete="username" required /></label>
+      <label><span data-i18n="clave">Contraseña</span><input type="password" id="lg-clave" autocomplete="current-password" required /></label>
+      <p class="p-error" id="lg-error" hidden></p>
+      <button type="submit" class="p-btn p-btn-main" id="lg-entrar" data-i18n="entrar">Entrar</button>
+      <p class="p-muted p-login-pie" data-i18n="login_pie">¿No tienes acceso o has olvidado la contraseña? Contacta con tu gestor comercial.</p>
+    </form>
+  </div>
 
   <header class="p-header">
     <div class="p-header-in">
@@ -20,11 +32,13 @@
         <button type="button" data-vista="reservas" data-i18n="nav_reservas">Mis reservas</button>
         <button type="button" data-vista="facturas" data-i18n="nav_facturas">Facturas</button>
         <button type="button" data-vista="faq" data-i18n="nav_faq">Preguntas frecuentes</button>
+        <button type="button" data-vista="admin" data-i18n="nav_admin" hidden>Administración</button>
       </nav>
       <div class="p-tools">
-        <label class="p-agency"><span data-i18n="agencia">Agencia</span>
+        <label class="p-agency" id="p-agencia-wrap" hidden><span data-i18n="agencia">Agencia</span>
           <select id="p-agencia"></select>
         </label>
+        <span class="p-agency" id="p-agencia-fija"></span>
         <select id="p-marca" aria-label="Marca">
           <option value="avis">Avis</option>
           <option value="budget">Budget</option>
@@ -34,9 +48,16 @@
           <option value="es">ES</option>
           <option value="en">EN</option>
         </select>
+        <div class="p-user-wrap">
+          <button type="button" class="p-user" id="p-user" aria-haspopup="true"></button>
+          <div class="p-user-menu" id="p-user-menu" hidden>
+            <button type="button" id="p-cambiar-clave" data-i18n="cambiar_clave">Cambiar contraseña</button>
+            <button type="button" id="p-salir" data-i18n="salir">Salir</button>
+          </div>
+        </div>
       </div>
     </div>
-    <p class="p-demo" data-i18n="demo">Versión de pruebas: la agencia se elige aquí; en producción vendrá del inicio de sesión. Las reservas se crean en el Rentway REAL.</p>
+    <p class="p-demo" data-i18n="demo">Versión de pruebas: las reservas se crean en el Rentway REAL.</p>
   </header>
 
   <main class="p-main">
@@ -118,6 +139,7 @@
               <label><input type="radio" name="pago" value="destino" checked /> <span><strong data-i18n="pago_destino">Pago en destino</strong><br><small data-i18n="pago_destino_d">El cliente paga en la oficina al recoger.</small></span></label>
               <label><input type="radio" name="pago" value="credito" /> <span><strong data-i18n="pago_credito">A crédito de la agencia</strong><br><small data-i18n="pago_credito_d">Se factura a la agencia.</small></span></label>
               <label class="p-off"><input type="radio" name="pago" value="prepago" disabled /> <span><strong data-i18n="pago_prepago">Prepago con tarjeta</strong><br><small data-i18n="pago_prepago_d">Próximamente.</small></span></label>
+              <p class="p-credito" id="c-credito" hidden></p>
             </div>
             <div class="p-card p-total" id="c-total"></div>
             <label class="p-check p-terms"><input type="checkbox" id="c-terminos" /> <span data-i18n="terminos">Acepto las condiciones generales y la política de privacidad.</span></label>
@@ -167,7 +189,77 @@
     <section data-v="faq" hidden>
       <div id="faq" class="p-faq"></div>
     </section>
+    <!-- ============ ADMINISTRACIÓN ============ -->
+    <section data-v="admin" hidden>
+      <div class="p-grid2">
+        <div>
+          <h3 data-i18n="usuarios">Usuarios</h3>
+          <div id="ad-usuarios"></div>
+          <h3 data-i18n="agencias">Agencias</h3>
+          <div id="ad-agencias"></div>
+        </div>
+        <aside class="p-aside-static">
+          <h3 id="ad-u-titulo" data-i18n="nuevo_usuario">Nuevo usuario</h3>
+          <form class="p-card p-form p-form-1" id="f-usuario" autocomplete="off">
+            <label><span data-i18n="email">Email</span><input type="email" id="au-email" required /></label>
+            <label><span data-i18n="nombre">Nombre</span><input id="au-nombre" maxlength="80" /></label>
+            <label><span data-i18n="agencia">Agencia</span><select id="au-agencia"></select></label>
+            <label><span data-i18n="rol">Rol</span>
+              <select id="au-rol">
+                <option value="agente" data-i18n="rol_agente">Agente</option>
+                <option value="responsable" data-i18n="rol_responsable">Responsable de agencia</option>
+                <option value="admin" data-i18n="rol_admin">Administrador interno</option>
+              </select></label>
+            <label class="p-check"><input type="checkbox" id="au-activo" checked /> <span data-i18n="activo">Activo</span></label>
+            <label class="p-check" id="au-reset-wrap" hidden><input type="checkbox" id="au-reset" /> <span data-i18n="resetear">Generar contraseña nueva</span></label>
+            <div class="p-actions">
+              <button type="submit" class="p-btn p-btn-main" data-i18n="guardar">Guardar</button>
+              <button type="button" class="p-btn" id="au-limpiar" data-i18n="limpiar">Limpiar</button>
+            </div>
+            <div id="au-res"></div>
+          </form>
+
+          <div id="ad-agencia-box" hidden>
+            <h3 id="ad-a-titulo" data-i18n="nueva_agencia">Nueva agencia</h3>
+            <form class="p-card p-form p-form-1" id="f-agencia" autocomplete="off">
+              <label><span data-i18n="identificador">Identificador</span><input id="aa-id" required maxlength="40" placeholder="viajes-sol" /></label>
+              <label><span data-i18n="nombre">Nombre</span><input id="aa-nombre" required maxlength="80" /></label>
+              <label><span data-i18n="agencia_superior">Agencia superior (sede)</span><select id="aa-padre"></select></label>
+              <label><span data-i18n="cliente_rentway">Cliente de Rentway</span><select id="aa-broker"></select></label>
+              <fieldset class="p-fieldset"><legend data-i18n="formas_pago">Formas de pago</legend>
+                <label class="p-check"><input type="checkbox" value="destino" name="aa-pago" checked /> <span data-i18n="pago_destino">Pago en destino</span></label>
+                <label class="p-check"><input type="checkbox" value="credito" name="aa-pago" /> <span data-i18n="pago_credito">A crédito de la agencia</span></label>
+                <label class="p-check"><input type="checkbox" value="prepago" name="aa-pago" /> <span data-i18n="pago_prepago">Prepago con tarjeta</span></label>
+              </fieldset>
+              <label><span data-i18n="limite_credito">Límite de crédito (€, vacío = sin límite)</span><input id="aa-credito" type="number" min="0" step="0.01" /></label>
+              <label class="p-check"><input type="checkbox" id="aa-activa" checked /> <span data-i18n="activa">Activa</span></label>
+              <div class="p-actions">
+                <button type="submit" class="p-btn p-btn-main" data-i18n="guardar">Guardar</button>
+                <button type="button" class="p-btn" id="aa-limpiar" data-i18n="limpiar">Limpiar</button>
+              </div>
+              <div id="aa-res"></div>
+            </form>
+          </div>
+        </aside>
+      </div>
+    </section>
   </main>
+
+  <!-- Cambio de contraseña (obligatorio la primera vez) -->
+  <div class="p-modal hidden" id="m-clave" role="dialog" aria-modal="true">
+    <form class="p-modal-box p-modal-sm p-form p-form-1" id="f-clave" autocomplete="off">
+      <h2 data-i18n="cambiar_clave">Cambiar contraseña</h2>
+      <p class="p-muted" id="mc-nota" data-i18n="clave_nota">Mínimo 10 caracteres, con letras y números.</p>
+      <label><span data-i18n="clave_actual">Contraseña actual</span><input type="password" id="mc-actual" autocomplete="current-password" required /></label>
+      <label><span data-i18n="clave_nueva">Contraseña nueva</span><input type="password" id="mc-nueva" autocomplete="new-password" required minlength="10" /></label>
+      <label><span data-i18n="clave_repite">Repite la nueva</span><input type="password" id="mc-repite" autocomplete="new-password" required minlength="10" /></label>
+      <p class="p-error" id="mc-error" hidden></p>
+      <div class="p-actions">
+        <button type="submit" class="p-btn p-btn-main" data-i18n="guardar">Guardar</button>
+        <button type="button" class="p-btn" id="mc-cancelar" data-i18n="cerrar">Cerrar</button>
+      </div>
+    </form>
+  </div>
 
   <!-- Detalle / modificación de una reserva -->
   <div class="p-modal hidden" id="m-detalle" role="dialog" aria-modal="true">
@@ -183,8 +275,8 @@
   <div id="p-toast" class="p-toast" hidden></div>
 
   <script src="js/portal-config.js?v=1"></script>
-  <script src="js/portal-i18n.js?v=1"></script>
-  <script src="js/portal.js?v=1"></script>
+  <script src="js/portal-i18n.js?v=2"></script>
+  <script src="js/portal.js?v=2"></script>
 </body>
 
 </html>

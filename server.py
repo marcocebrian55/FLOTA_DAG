@@ -23,14 +23,20 @@ Servicio de reservas: Create_Reservation.asmx → Create_Internacional_Reservati
 
 import configparser
 import json
+import os
 import re
+import sys
 import secrets
 import time
 import urllib.error
 import urllib.request
+from http.cookies import SimpleCookie
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs
 from xml.sax.saxutils import escape
+
+import portal_auth as pa
 
 ROOT = Path(__file__).resolve().parent
 BROKERS_FILE = ROOT / "brokers.ini"
@@ -47,7 +53,11 @@ RES_NS = "http://www.jimpisoft.pt/Rentway_Internacional_Reservations_WS/"
 RES_ACTION = RES_NS + "Create_Internacional_Reservation/Create_Internacional_Reservation"
 
 # Ficheros que nunca se sirven por HTTP aunque estén en la carpeta
-BLOCKED = {"brokers.ini", "server.py", "reservas.log"}
+BLOCKED = {"brokers.ini", "server.py", "reservas.log", "portal_datos.json", "portal_datos.tmp", "portal_auth.py"}
+
+# PORTAL_PUBLICO=1 al publicar el portal: todo exige sesión, cookie Secure (HTTPS) y el panel interno no se sirve
+MODO_PUBLICO = os.environ.get("PORTAL_PUBLICO") == "1"
+COOKIE = "portal_sesion"
 
 is_date = lambda s: bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", s or ""))
 is_datetime = lambda s: bool(re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}", s or ""))
@@ -441,7 +451,7 @@ def del_registro(broker_id, desde, hasta, numero=None):
                     "devolucion": e.get("devolucion") or "", "grupo": e.get("grupo", ""), "tarifa": e.get("tarifa", ""),
                     "dias": "", "creada": e.get("fecha", "")[:16], "conductor": e.get("cliente", ""),
                     "promocion": e.get("promocion") or "", "importe": num(res.get("importe")), "contrato": "",
-                    "prepago": False, "lineas": [], "origen": "portal",
+                    "prepago": False, "lineas": [], "origen": "portal", "agencia": e.get("agencia"),
                 }
             elif n in regs and e.get("accion") == "C":
                 regs[n].update(estado="2", estado_texto="Cancelada")
@@ -659,6 +669,7 @@ def log_reserva(broker_id, entorno, accion, d, result):
         "tarifa": d.get("tarifa"), "paquete": d.get("paquete"), "promocion": d.get("promocion"),
         "extras": d.get("extras"), "pago": d.get("pago"), "devolucion": d.get("devolucion"),
         "oficina_devolucion": d.get("oficina_devolucion"),
+        "agencia": d.get("_agencia"), "usuario": d.get("_usuario"), "total_estimado": d.get("total_estimado"),
         "grupo": d.get("grupo"), "recogida": d.get("recogida"), "oficina": d.get("oficina_recogida"),
         "cliente": f'{d.get("apellidos", "")}, {d.get("nombre", "")}'.strip(", "),
         "resultado": {k: v for k, v in result.items() if k != "respuesta"},
@@ -667,29 +678,161 @@ def log_reserva(broker_id, entorno, accion, d, result):
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+# ---------------------------------------------------------------- agencias del portal
+
+def entradas_log():
+    if not LOG_FILE.exists():
+        return []
+    out = []
+    with open(LOG_FILE, encoding="utf-8") as fh:
+        for linea in fh:
+            try:
+                out.append(json.loads(linea))
+            except ValueError:
+                pass
+    return out
+
+
+def mapa_registro(broker_id):
+    """nº de reserva → agencia del portal que la creó (solo las creadas con sesión)."""
+    m = {}
+    for e in entradas_log():
+        res = e.get("resultado") or {}
+        if e.get("broker") == broker_id and e.get("accion") == "N" and not res.get("error") and res.get("numero"):
+            m[res["numero"]] = e.get("agencia")
+    return m
+
+
+def visible(numero, b, ctx, agencia=None):
+    """Una agencia ve lo que crearon ella o sus sucursales; la titular del cliente Rentway ve además
+    lo que no salió del portal (mostrador, otros canales)."""
+    if "mapa" not in ctx:
+        ctx["mapa"] = mapa_registro(pa.broker_de(ctx["d"], ctx["agencia"]))
+    ag = agencia or ctx["mapa"].get(str(numero))
+    return ag in ctx["vis"] if ag else ctx["titular"]
+
+
+def limite_credito(d, agencia):
+    """(agencia que fija el límite, límite): el primero definido subiendo por la jerarquía."""
+    vistos = set()
+    while agencia and agencia not in vistos:
+        vistos.add(agencia)
+        a = d["agencias"].get(agencia) or {}
+        if a.get("credito") is not None:
+            return agencia, a["credito"]
+        agencia = a.get("padre")
+    return None, None
+
+
+def credito(d, agencia):
+    """Consumo PROVISIONAL a partir de reservas.log (reservas a crédito vivas creadas en el portal).
+    La fuente buena será la contabilidad (Navision); queda pendiente de decidir."""
+    titular, limite = limite_credito(d, agencia)
+    if limite is None:
+        return None
+    ids, vivas = pa.subarbol(d, titular), {}
+    for e in entradas_log():
+        res = e.get("resultado") or {}
+        if res.get("error"):
+            continue
+        n = res.get("numero") or e.get("numero_pedido")
+        if e.get("accion") == "N" and e.get("pago") == "credito" and e.get("agencia") in ids and n:
+            vivas[n] = num(res.get("importe")) or num(e.get("total_estimado")) or 0
+        elif n in vivas and e.get("accion") == "P" and num(res.get("importe")):
+            vivas[n] = num(res.get("importe"))
+        elif n in vivas and e.get("accion") == "C":
+            vivas.pop(n)
+    usado = round(sum(vivas.values()), 2)
+    return {"limite": limite, "usado": usado, "disponible": round(limite - usado, 2)}
+
+
+def yo(u, agencia=None):
+    f = pa.ficha_yo(u, agencia)
+    d = pa.cargar()
+    if f["agencia"]["id"] and "credito" in f["agencia"]["pagos"]:
+        f["agencia"]["credito_info"] = credito(d, f["agencia"]["id"])
+    return f
+
+
+def permiso_reserva(accion, body, b, ctx):
+    d, act = ctx["d"], ctx["agencia"]
+    if accion == "N":
+        pagos = d["agencias"].get(act, {}).get("pagos", ["destino"])
+        pago = body.get("pago") or "destino"
+        if pago not in pagos:
+            return "Esa forma de pago no está habilitada para tu agencia"
+        if pago == "credito":
+            c = credito(d, act)
+            importe = num(body.get("total_estimado")) or 0
+            if c and importe > c["disponible"]:
+                return (f"Crédito agotado: disponible {c['disponible']:.2f} € de {c['limite']:.2f} €. "
+                        "Elige otra forma de pago o contacta con tu gestor comercial")
+        return None
+    if not str(body.get("numero") or "").isdigit():
+        return "Indica el número de reserva"
+    if not visible(body["numero"], b, ctx):
+        return "Reserva no encontrada para tu agencia"
+    return None
+
+
 # ---------------------------------------------------------------- HTTP
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=str(ROOT), **kw)
 
-    def send_json(self, body, status=200):
+    def send_json(self, body, status=200, cookie=None):
         data = json.dumps(body, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        if cookie is not None:
+            # HttpOnly: el JavaScript no puede leerla · SameSite=Strict: otra web no puede usarla
+            vida = f"Max-Age={pa.SESION_HORAS * 3600}" if cookie else "Max-Age=0"
+            seguro = "; Secure" if MODO_PUBLICO else ""
+            self.send_header("Set-Cookie", f"{COOKIE}={cookie}; Path=/; HttpOnly; SameSite=Strict; {vida}{seguro}")
         self.end_headers()
         self.wfile.write(data)
 
+    def token(self):
+        c = SimpleCookie()
+        try:
+            c.load(self.headers.get("Cookie", ""))
+        except Exception:
+            return None
+        return c[COOKIE].value if COOKIE in c else None
+
     def do_GET(self):
-        path = self.path.split("?")[0].lstrip("/")
+        path, _, qs = self.path.partition("?")
+        path = path.lstrip("/")
+        q = {k: v[0] for k, v in parse_qs(qs).items()}
+        u = pa.usuario(self.token())
+        if path == "api/yo":
+            return self.send_json(yo(u, q.get("agencia")) if u else {"error": "Sin sesión"}, 200 if u else 401)
+        if path == "api/admin":
+            if not u or u["rol"] == "agente":
+                return self.send_json({"error": "Sin permiso"}, 403)
+            datos = pa.datos_admin(u)
+            if u["rol"] == "admin":
+                datos["brokers"] = [{"id": k, "nombre": b["nombre"]} for k, b in load_brokers().items()
+                                    if configured(b) and b["entorno"] != "prueba"]
+            return self.send_json(datos)
         if path == "api/brokers":
+            if MODO_PUBLICO and not (u and u["rol"] == "admin"):
+                return self.send_json({"error": "Sin permiso"}, 403)
             return self.send_json([
                 {"id": k, "nombre": b["nombre"], "activo": configured(b), "entorno": b["entorno"]}
                 for k, b in load_brokers().items()
             ])
-        if path in BLOCKED or path.startswith(".git"):
+        if path in BLOCKED or path.startswith(".git") or path.endswith(".py"):
             return self.send_error(404)
+        if MODO_PUBLICO and (path in ("", "index.html", "explorador.html") or path.startswith(("docs/", "scraper/", "worker/"))):
+            # publicado: solo el portal; el panel interno sigue siendo local
+            self.send_response(302)
+            self.send_header("Location", "/portal.html")
+            self.end_headers()
+            return
         return super().do_GET()
 
     def do_POST(self):
@@ -698,23 +841,73 @@ class Handler(SimpleHTTPRequestHandler):
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         except ValueError:
             return self.send_json({"error": "Petición no válida"}, 400)
+        if not isinstance(body, dict):
+            return self.send_json({"error": "Petición no válida"}, 400)
+        try:
+            if path == "/api/login":
+                tok = pa.login(body.get("email"), body.get("clave"))
+                return self.send_json(yo(pa.usuario(tok)), cookie=tok)
+            if path == "/api/logout":
+                pa.logout(self.token())
+                return self.send_json({"ok": True}, cookie="")
+            u = pa.usuario(self.token())
+            if path == "/api/clave":
+                if not u:
+                    return self.send_json({"error": "Sin sesión"}, 401)
+                pa.cambiar_clave(u["email"], body.get("actual"), body.get("nueva"))
+                return self.send_json({"ok": True})
+            if path == "/api/admin/agencia":
+                if not u:
+                    return self.send_json({"error": "Sin sesión"}, 401)
+                brokers = {k for k, b in load_brokers().items() if configured(b) and b["entorno"] != "prueba"}
+                return self.send_json({"id": pa.guardar_agencia(u, body, brokers)})
+            if path == "/api/admin/usuario":
+                if not u:
+                    return self.send_json({"error": "Sin sesión"}, 401)
+                return self.send_json({"ok": True, "temporal": pa.guardar_usuario(u, body)})
+        except pa.Prohibido as e:
+            return self.send_json({"error": str(e)}, 403)
+        except ValueError as e:
+            return self.send_json({"error": str(e)}, 400)
+
+        # Con sesión de portal, la agencia (y su cliente de Rentway) la decide el servidor, nunca el navegador
+        ctx = None
+        if u:
+            d = pa.cargar()
+            act = pa.agencia_activa(d, u, body.get("agencia"))
+            if not act:
+                return self.send_json({"error": "Usuario sin agencia"}, 403)
+            ctx = {"u": u, "d": d, "agencia": act,
+                   "vis": pa.subarbol(d, act) if u["rol"] != "agente" else {act},
+                   "titular": pa.es_titular(d, act)}
+            body["provider"] = pa.broker_de(d, act)
+            body["_agencia"], body["_usuario"] = act, u["email"]
+        elif MODO_PUBLICO or self.headers.get("X-Portal") == "1":
+            return self.send_json({"error": "Sesión caducada", "login": True}, 401)
+
         broker_id = body.get("provider", "")
         b = load_brokers().get(broker_id)
         if not b or not configured(b):
             return self.send_json({"error": f"Broker sin credenciales: {broker_id}"}, 400)
         if path == "/api/precios":
+            if ctx:
+                return self.send_json({"error": "Sin permiso"}, 403)
             return self.precios(b, body)
         if path == "/api/disponibilidad":
             return self.disponibilidad(b, body)
         if path == "/api/reserva":
-            return self.reserva(broker_id, b, body)
+            return self.reserva(broker_id, b, body, ctx)
         if path in CONSULTAS:
-            return self.consulta(path, b, body)
+            if ctx and path == "/api/facturas" and (ctx["u"]["rol"] == "agente" or not ctx["titular"]):
+                return self.send_json({"error": "Las facturas solo las ve el responsable de la agencia titular"}, 403)
+            return self.consulta(path, b, body, ctx)
         return self.send_error(404)
 
-    def consulta(self, path, b, d):
+    def consulta(self, path, b, d, ctx=None):
         try:
             result = CONSULTAS[path](b, d)
+            if ctx and path == "/api/listado" and "reservas" in result:
+                result["reservas"] = [r for r in result["reservas"] if visible(r["numero"], b, ctx, r.get("agencia"))]
         except ValueError as e:
             return self.send_json({"error": str(e)}, 400)
         except Exception as e:
@@ -768,11 +961,15 @@ class Handler(SimpleHTTPRequestHandler):
             result = {"error": f"HTTP {status}"}
         return self.send_json(result)
 
-    def reserva(self, broker_id, b, body):
+    def reserva(self, broker_id, b, body, ctx=None):
         accion = body.get("accion", "")
         error = validar_reserva(accion, body)
         if error:
             return self.send_json({"error": error}, 400)
+        if ctx:
+            error = permiso_reserva(accion, body, b, ctx)
+            if error:
+                return self.send_json({"error": error}, 403)
         if accion == "N" and body.get("pago") == "prepago" and not PASARELA_ACTIVA:
             return self.send_json({"error": "El prepago con tarjeta aún no está disponible"}, 400)
         if accion == "N" and not body.get("referencia"):
@@ -800,6 +997,12 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    if "--usuario" in sys.argv:
+        # py server.py --usuario correo@empresa.com --rol admin [--agencia id]
+        arg = lambda k, defecto="": sys.argv[sys.argv.index(k) + 1] if k in sys.argv else defecto
+        clave = pa.alta_cli(arg("--usuario"), arg("--rol", "admin"), arg("--agencia"))
+        print(f"Usuario {arg('--usuario')} listo. Contraseña temporal (cámbiala al entrar): {clave}")
+        sys.exit(0)
     if not BROKERS_FILE.exists():
         print("AVISO: falta brokers.ini — copia brokers.ejemplo.ini y rellénalo.")
     print(f"Panel en http://localhost:{PORT}")
