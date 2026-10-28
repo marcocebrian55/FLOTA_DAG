@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal de agencias</title>
+  <link rel="stylesheet" href="css/portal.css?v=1" />
+</head>
+
+<!-- Portal B2B para agencias (fase 0: solo con el servidor local, py server.py).
+     Marca por URL: portal.html?marca=avis | budget | xtravans · idioma: ?lang=en -->
+<body data-marca="avis">
+
+  <header class="p-header">
+    <div class="p-header-in">
+      <div class="p-brand"><span class="p-logo" id="p-logo">AVIS</span><span class="p-brand-sub" data-i18n="portal">Portal de agencias</span></div>
+      <nav class="p-nav" id="p-nav">
+        <button type="button" data-vista="buscar" class="active" data-i18n="nav_buscar">Nueva reserva</button>
+        <button type="button" data-vista="reservas" data-i18n="nav_reservas">Mis reservas</button>
+        <button type="button" data-vista="facturas" data-i18n="nav_facturas">Facturas</button>
+        <button type="button" data-vista="faq" data-i18n="nav_faq">Preguntas frecuentes</button>
+      </nav>
+      <div class="p-tools">
+        <label class="p-agency"><span data-i18n="agencia">Agencia</span>
+          <select id="p-agencia"></select>
+        </label>
+        <select id="p-marca" aria-label="Marca">
+          <option value="avis">Avis</option>
+          <option value="budget">Budget</option>
+          <option value="xtravans">Xtravans</option>
+        </select>
+        <select id="p-lang" aria-label="Idioma">
+          <option value="es">ES</option>
+          <option value="en">EN</option>
+        </select>
+      </div>
+    </div>
+    <p class="p-demo" data-i18n="demo">Versión de pruebas: la agencia se elige aquí; en producción vendrá del inicio de sesión. Las reservas se crean en el Rentway REAL.</p>
+  </header>
+
+  <main class="p-main">
+
+    <!-- ============ NUEVA RESERVA ============ -->
+    <section data-v="buscar">
+      <div class="p-steps" id="p-steps">
+        <span data-paso="1" class="on" data-i18n="paso1">1. Vehículo</span>
+        <span data-paso="2" data-i18n="paso2">2. Extras y conductor</span>
+        <span data-paso="3" data-i18n="paso3">3. Confirmación</span>
+      </div>
+
+      <!-- paso 1 -->
+      <div data-p="1">
+        <form class="p-card p-search" id="f-buscar">
+          <label><span data-i18n="of_rec">Recogida</span><select id="b-of-rec" class="p-of" required></select></label>
+          <label><span data-i18n="of_dev">Devolución</span><select id="b-of-dev" class="p-of" required></select></label>
+          <label><span data-i18n="f_rec">Fecha recogida</span><input type="date" id="b-f-rec" required /></label>
+          <label><span data-i18n="hora">Hora</span><input type="time" id="b-h-rec" value="10:00" step="900" required /></label>
+          <label><span data-i18n="f_dev">Fecha devolución</span><input type="date" id="b-f-dev" required /></label>
+          <label><span data-i18n="hora">Hora</span><input type="time" id="b-h-dev" value="10:00" step="900" required /></label>
+          <label><span data-i18n="edad">Nacimiento del conductor</span><input type="date" id="b-nac" /></label>
+          <label><span data-i18n="promo">Código promocional</span><input type="text" id="b-promo" maxlength="50" autocomplete="off" /></label>
+          <button type="submit" class="p-btn p-btn-main" id="b-buscar" data-i18n="buscar">Buscar</button>
+        </form>
+        <div class="p-filters" id="b-filtros" hidden>
+          <button type="button" data-cat="" class="on" data-i18n="cat_todos">Todos</button>
+          <button type="button" data-cat="eco" data-i18n="cat_eco">Pequeño / compacto</button>
+          <button type="button" data-cat="suv" data-i18n="cat_suv">SUV</button>
+          <button type="button" data-cat="van" data-i18n="cat_van">Furgoneta / 7+ plazas</button>
+          <button type="button" data-cat="auto" data-i18n="cat_auto">Automático</button>
+          <button type="button" data-cat="elec" data-i18n="cat_elec">Eléctrico / híbrido</button>
+          <label class="p-check"><input type="checkbox" id="b-solo-pack" /> <span data-i18n="con_paquete">Solo con paquete de coberturas</span></label>
+        </div>
+        <div id="b-resultados" class="p-results"></div>
+      </div>
+
+      <!-- paso 2 -->
+      <div data-p="2" hidden>
+        <div class="p-card p-elegido" id="c-elegido"></div>
+        <div class="p-grid2">
+          <div>
+            <h3 data-i18n="extras">Extras y coberturas</h3>
+            <div id="c-extras" class="p-card"></div>
+
+            <h3 data-i18n="conductor">Conductor principal</h3>
+            <form class="p-card p-form" id="f-conductor" autocomplete="off">
+              <label><span><span data-i18n="nombre">Nombre</span> *</span><input id="c-nombre" required maxlength="40" /></label>
+              <label><span><span data-i18n="apellidos">Apellidos</span> *</span><input id="c-apellidos" required maxlength="40" /></label>
+              <label><span data-i18n="pais">País</span><select id="c-pais"></select></label>
+              <label><span data-i18n="tipo_doc">Documento</span>
+                <select id="c-tipo-doc">
+                  <option value="DNI">DNI / NIE</option>
+                  <option value="PAS" data-i18n="pasaporte">Pasaporte</option>
+                  <option value="OTRO" data-i18n="otro">Otro</option>
+                </select></label>
+              <label><span data-i18n="num_doc">Nº de documento</span><input id="c-doc" maxlength="25" /></label>
+              <label><span data-i18n="email">Email</span><input id="c-email" type="email" maxlength="45" /></label>
+              <label><span data-i18n="telefono">Teléfono</span><input id="c-movil" type="tel" maxlength="15" /></label>
+              <label class="p-wide"><span data-i18n="direccion">Dirección de facturación</span><input id="c-direccion" maxlength="45" /></label>
+              <label><span data-i18n="ciudad">Ciudad</span><input id="c-ciudad" maxlength="25" /></label>
+              <label><span data-i18n="cp">Código postal</span><input id="c-cp" maxlength="15" /></label>
+              <label><span data-i18n="vuelo">Nº de vuelo</span><input id="c-vuelo" maxlength="10" /></label>
+              <label><span data-i18n="ref_agencia">Localizador / expediente de la agencia</span><input id="c-ref" maxlength="30" /></label>
+              <details class="p-wide p-adicional">
+                <summary data-i18n="adicional">Conductor adicional</summary>
+                <div class="p-form">
+                  <label><span data-i18n="nombre">Nombre</span><input id="c-ad-nombre" maxlength="40" /></label>
+                  <label><span data-i18n="apellidos">Apellidos</span><input id="c-ad-apellidos" maxlength="40" /></label>
+                  <label><span data-i18n="nacimiento">Fecha de nacimiento</span><input id="c-ad-nac" type="date" /></label>
+                </div>
+              </details>
+              <label class="p-wide"><span data-i18n="observaciones">Observaciones</span><textarea id="c-obs" rows="2" maxlength="250"></textarea></label>
+            </form>
+          </div>
+          <aside>
+            <h3 data-i18n="pago">Forma de pago</h3>
+            <div class="p-card p-pagos" id="c-pagos">
+              <label><input type="radio" name="pago" value="destino" checked /> <span><strong data-i18n="pago_destino">Pago en destino</strong><br><small data-i18n="pago_destino_d">El cliente paga en la oficina al recoger.</small></span></label>
+              <label><input type="radio" name="pago" value="credito" /> <span><strong data-i18n="pago_credito">A crédito de la agencia</strong><br><small data-i18n="pago_credito_d">Se factura a la agencia.</small></span></label>
+              <label class="p-off"><input type="radio" name="pago" value="prepago" disabled /> <span><strong data-i18n="pago_prepago">Prepago con tarjeta</strong><br><small data-i18n="pago_prepago_d">Próximamente.</small></span></label>
+            </div>
+            <div class="p-card p-total" id="c-total"></div>
+            <label class="p-check p-terms"><input type="checkbox" id="c-terminos" /> <span data-i18n="terminos">Acepto las condiciones generales y la política de privacidad.</span></label>
+            <div class="p-actions">
+              <button type="button" class="p-btn" id="c-atras" data-i18n="atras">Atrás</button>
+              <button type="button" class="p-btn p-btn-main" id="c-confirmar" data-i18n="confirmar">Confirmar reserva</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- paso 3 -->
+      <div data-p="3" hidden>
+        <div id="r-resultado"></div>
+      </div>
+    </section>
+
+    <!-- ============ MIS RESERVAS ============ -->
+    <section data-v="reservas" hidden>
+      <form class="p-card p-search p-search-sm" id="f-listado">
+        <label><span data-i18n="desde">Recogida desde</span><input type="date" id="l-desde" required /></label>
+        <label><span data-i18n="hasta">hasta</span><input type="date" id="l-hasta" required /></label>
+        <label><span data-i18n="num_reserva">Nº de reserva</span><input id="l-numero" inputmode="numeric" /></label>
+        <button type="submit" class="p-btn p-btn-main" data-i18n="buscar">Buscar</button>
+      </form>
+      <div class="p-filters" id="l-barra" hidden>
+        <input type="search" id="l-filtro" data-i18n-ph="filtrar" placeholder="Filtrar por cliente, localizador, oficina…" />
+        <select id="l-estado"><option value="" data-i18n="todos_estados">Todos los estados</option></select>
+        <button type="button" class="p-btn" id="l-csv" data-i18n="exportar">Exportar a Excel</button>
+      </div>
+      <div id="l-resultado"></div>
+    </section>
+
+    <!-- ============ FACTURAS ============ -->
+    <section data-v="facturas" hidden>
+      <form class="p-card p-search p-search-sm" id="f-facturas">
+        <label><span data-i18n="desde_f">Desde</span><input type="date" id="fa-desde" required /></label>
+        <label><span data-i18n="hasta">hasta</span><input type="date" id="fa-hasta" required /></label>
+        <label class="p-check"><input type="checkbox" id="fa-pend" /> <span data-i18n="solo_pend">Solo pendientes de pago</span></label>
+        <button type="submit" class="p-btn p-btn-main" data-i18n="buscar">Buscar</button>
+      </form>
+      <div class="p-filters" id="fa-barra" hidden><button type="button" class="p-btn" id="fa-csv" data-i18n="exportar">Exportar a Excel</button></div>
+      <div id="fa-resultado"></div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section data-v="faq" hidden>
+      <div id="faq" class="p-faq"></div>
+    </section>
+  </main>
+
+  <!-- Detalle / modificación de una reserva -->
+  <div class="p-modal hidden" id="m-detalle" role="dialog" aria-modal="true">
+    <div class="p-modal-box">
+      <button type="button" class="p-modal-x" data-cerrar aria-label="Cerrar">×</button>
+      <div id="m-cuerpo"></div>
+    </div>
+  </div>
+
+  <!-- Bono imprimible (se rellena al imprimir) -->
+  <div id="bono" class="p-bono" aria-hidden="true"></div>
+
+  <div id="p-toast" class="p-toast" hidden></div>
+
+  <script src="js/portal-config.js?v=1"></script>
+  <script src="js/portal-i18n.js?v=1"></script>
+  <script src="js/portal.js?v=1"></script>
+</body>
+
+</html>
