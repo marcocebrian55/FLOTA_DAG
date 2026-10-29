@@ -382,7 +382,10 @@ def api_listado(b, d):
     out = []
     for f in next(iter(t.values()), []):
         estado = f.get("StatusCode", "")
-        if estado == "1" and f.get("RA_Number"):
+        contrato = f.get("RA_Number", "").strip()
+        if contrato == "0":  # Rentway devuelve 0 cuando aún no hay contrato
+            contrato = ""
+        if estado == "1" and contrato:
             estado_txt = "Finalizada" if f.get("RA_Closed", "").lower() == "true" else "Con contrato"
         else:
             estado_txt = ESTADOS_LISTADO.get(estado, f.get("StatusDescription", ""))
@@ -395,7 +398,7 @@ def api_listado(b, d):
             "grupo": f.get("GroupID", ""), "tarifa": f.get("RateCode", ""), "dias": f.get("NrDays", ""),
             "creada": f.get("CreationDate", "")[:16], "conductor": f.get("DriverName", ""),
             "promocion": f.get("promotionCode", ""), "importe": num(f.get("ReservationPreviewValue")),
-            "contrato": f.get("RA_Number", ""), "prepago": f.get("PrePaid", "").lower() == "true",
+            "contrato": contrato, "prepago": f.get("PrePaid", "").lower() == "true",
             "lineas": [{"codigo": l.get("Code", ""), "descripcion": l.get("Description", ""),
                         "tipo": l.get("Type", ""), "unidad": num(l.get("Unit_Value")),
                         "cantidad": l.get("Quantity", ""), "iva": num(l.get("Vat_Rate"))}

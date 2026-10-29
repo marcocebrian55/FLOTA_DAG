@@ -50,10 +50,10 @@ Alternativa propia al microsite de reservas para agencias, sobre el servidor loc
 
 ## Límites conocidos de Rentway (28/10/2026)
 
-- **ListReservations**: con `directo` solo devuelve reservas con contrato o canceladas (no las
-  futuras confirmadas); con `tres60` responde "USER NOT AUTHORIZED TO LIST RESERVATIONS".
-  Por eso el listado se completa con las reservas creadas desde aquí (`reservas.log`) y su
-  estado actual (mensaje V).
+- **ListReservations**: con `directo` devuelve también las futuras confirmadas (29/10: el 28/10 parecía
+  que no porque `RA_Number = 0` —sin contrato— se leía como contrato; corregido). Con `tres60`
+  responde "USER NOT AUTHORIZED TO LIST RESERVATIONS". El listado se completa con las reservas
+  creadas desde aquí (`reservas.log`) y su estado actual (mensaje V).
 - **ListPendingInvoices**: "The key 'RWGDPR_Rentway_Key' is not open" → problema del servidor de
   Jimpisoft; hay que pedírselo a ellos.
 
