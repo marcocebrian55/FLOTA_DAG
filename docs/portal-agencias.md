@@ -63,6 +63,10 @@ Alternativa propia al microsite de reservas para agencias, sobre el servidor loc
   acepta con el cliente 1 y devuelve `percentualDiscount` 0 en todas las tarifas, grupos, fechas y
   oficinas probados. Si un código válido no rebaja nada, el portal lo avisa encima de los resultados.
 
+- **Cuentas XML** (29/10): `brokers.ini` tiene los 168 clientes de Rentway del webservice (bloque
+  `<nombre>-<clientid>`, company 200037). Prueba de precios: 78 con tarifa, 88 entran pero sin tarifa
+  en ninguna oficina/fecha probada ("NO RATE IS AVAILABLE"), 2 "CUSTOMER NOT AUTHORIZED".
+
 ## Configuración
 
 `js/portal-config.js`: marcas, oficinas, países, política de cancelación (PENDIENTE),
