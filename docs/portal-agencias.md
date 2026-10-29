@@ -57,6 +57,12 @@ Alternativa propia al microsite de reservas para agencias, sobre el servidor loc
 - **ListPendingInvoices**: "The key 'RWGDPR_Rentway_Key' is not open" → problema del servidor de
   Jimpisoft; hay que pedírselo a ellos.
 
+- **Códigos promocionales** (29/10): el portal envía el código en la búsqueda (getMultiplePrices) y
+  en la reserva (promotionCode). Rentway valida el código (si no existe: "THE PROMOTION CODE INFORMED
+  IS NOT VALID!") pero el descuento lo decide su configuración: `Avis10` (clientes 1, 49 y 533) se
+  acepta con el cliente 1 y devuelve `percentualDiscount` 0 en todas las tarifas, grupos, fechas y
+  oficinas probados. Si un código válido no rebaja nada, el portal lo avisa encima de los resultados.
+
 ## Configuración
 
 `js/portal-config.js`: marcas, oficinas, países, política de cancelación (PENDIENTE),

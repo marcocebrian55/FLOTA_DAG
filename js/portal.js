@@ -350,6 +350,7 @@
     const q = s.consulta, dias = s.opciones[0]?.dias || "";
     $("b-resultados").innerHTML = `
       <p class="p-hint">${porGrupo.size} · ${esc(dias)} ${t("dias")} · ${esc(oficina(q.oficina_recogida))} → ${esc(oficina(q.oficina_devolucion))}${q.oficina_recogida !== q.oficina_devolucion ? ` <span class="p-tag">${t("oneway")}</span>` : ""}</p>
+      ${q.promocion && !s.opciones.some(o => o.descuento) ? `<div class="p-card p-warn">${t("promo_sin_descuento")}</div>` : ""}
       ${grupos.map(lista => tarjeta(lista)).join("")}`;
     $("b-resultados").querySelectorAll("[data-elegir]").forEach(b => b.addEventListener("click", () => elegir(+b.dataset.elegir)));
   }
