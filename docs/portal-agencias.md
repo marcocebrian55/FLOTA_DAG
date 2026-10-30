@@ -63,10 +63,13 @@ Alternativa propia al microsite de reservas para agencias, sobre el servidor loc
   acepta con el cliente 1 y devuelve `percentualDiscount` 0 en todas las tarifas, grupos, fechas y
   oficinas probados. Si un código válido no rebaja nada, el portal lo avisa encima de los resultados.
 
-- **Cuentas XML** (29/10): `brokers.ini` tiene los 168 clientes de Rentway del webservice (bloque
-  `<nombre>-<clientid>`, company 200037). Prueba de precios: 78 con tarifa, 88 entran pero sin tarifa
-  en ninguna oficina/fecha probada ("NO RATE IS AVAILABLE"), 2 "CUSTOMER NOT AUTHORIZED". Esas 90
-  llevan `reservable = no`: se conservan pero no se pueden elegir (ni buscar precios ni crear reservas).
+- **Cuentas XML** (29/10, corregido 30/10): `brokers.ini` tiene los 168 clientes de Rentway del
+  webservice (bloque `<nombre>-<clientid>`, company 200037). 164 dan precio **con su propia oficina**:
+  muchos trabajan con oficinas Budget (`LPABUD`, `FUE BUD`…), Turisprime (`LPATUR`…), Xtravans
+  (`XLP4`…) o de hotel/ciudad (`ACOR24`, `TLP4`…), no con las de Avis (`LPA`…). Solo 4 llevan
+  `reservable = no`: DoYouSpain 474 y Xpress 94 ("CUSTOMER NOT AUTHORIZED"), HovimaWeb 312 y TUI 168
+  (sin precio en 19 oficinas probadas). `getStations` devuelve las 1.924 oficinas de la empresa, igual
+  para todos los clientes (no filtra por cliente).
 - **Buscador de agencia** (cabecera): busca por nombre o id entre las agencias del portal y, para el
   admin, entre los intermediarios (clientes Rentway, `rw:<broker>`). Con un intermediario el admin
   reserva directamente con ese cliente: sin agencia del portal, solo pago en destino, ve todas sus
