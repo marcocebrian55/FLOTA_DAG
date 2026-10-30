@@ -6,6 +6,9 @@
 const I18N = {
   es: {
     portal: "Portal de agencias", agencia: "Agencia",
+    buscar_agencia: "Buscar agencia o intermediario…", agencias_portal: "Agencias del portal",
+    intermediarios: "Intermediarios (clientes Rentway)", sin_tarifa: "sin tarifa",
+    sin_tarifa_rw: "Sin tarifa en Rentway: no se puede reservar con este cliente", sin_coincidencias: "Sin coincidencias",
     clave: "Contraseña", entrar: "Entrar", login_pie: "¿No tienes acceso o has olvidado la contraseña? Contacta con tu gestor comercial.",
     nav_admin: "Administración", cambiar_clave: "Cambiar contraseña", salir: "Salir",
     usuarios: "Usuarios", agencias: "Agencias", nuevo_usuario: "Nuevo usuario", editar_usuario: "Editar usuario",
@@ -76,6 +79,9 @@ const I18N = {
   },
   en: {
     portal: "Agency portal", agencia: "Agency",
+    buscar_agencia: "Search agency or intermediary…", agencias_portal: "Portal agencies",
+    intermediarios: "Intermediaries (Rentway customers)", sin_tarifa: "no rate",
+    sin_tarifa_rw: "No rate in Rentway: bookings cannot be made with this customer", sin_coincidencias: "No matches",
     clave: "Password", entrar: "Sign in", login_pie: "No access or forgotten your password? Contact your account manager.",
     nav_admin: "Administration", cambiar_clave: "Change password", salir: "Sign out",
     usuarios: "Users", agencias: "Agencies", nuevo_usuario: "New user", editar_usuario: "Edit user",

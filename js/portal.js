@@ -83,17 +83,84 @@
     $("login").hidden = true;
     $("p-user").textContent = yo.nombre || yo.email;
     $("p-user").title = `${yo.email} · ${t("rol_" + yo.rol)}`;
-    const varias = yo.agencias.length > 1;
+    const varias = yo.agencias.length + (yo.intermediarios || []).length > 1;
     $("p-agencia-wrap").hidden = !varias;
     $("p-agencia-fija").hidden = varias;
     $("p-agencia-fija").textContent = yo.agencia.nombre;
-    $("p-agencia").innerHTML = yo.agencias.map(a => `<option value="${esc(a.id)}">${a.padre ? "— " : ""}${esc(a.nombre)}</option>`).join("");
-    $("p-agencia").value = s.agencia;
+    $("p-agencia-q").value = yo.agencia.nombre;
+    $("p-agencia-q").title = yo.agencia.nombre;
+    $("p-agencia-q").placeholder = t("buscar_agencia");
     // Facturas: solo responsables de la agencia titular del cliente Rentway; Administración: no agentes
     document.querySelector("[data-vista=facturas]").hidden = yo.rol === "agente" || !yo.agencia.titular;
     document.querySelector("[data-vista=admin]").hidden = yo.rol === "agente";
     pintarPagos();
     if (yo.debe_cambiar) abrirClave(true);
+  }
+
+  /* Buscador de agencia: las del portal y, para el admin, los clientes de Rentway (intermediarios).
+     Los marcados como no reservables (sin tarifa en Rentway) salen en gris y no se pueden elegir. */
+  const sinAcentos = v => (v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  function opcionesAgencia() {
+    const yo = s.yo || {};
+    return [
+      ...(yo.agencias || []).map(a => ({ id: a.id, nombre: (a.padre ? "— " : "") + a.nombre, grupo: "agencias_portal", ok: true })),
+      ...(yo.intermediarios || []).map(b => ({ id: b.id, nombre: b.nombre, grupo: "intermediarios", ok: b.reservable })),
+    ];
+  }
+
+  function pintarComboAgencia() {
+    const q = sinAcentos($("p-agencia-q").value.trim());
+    const ops = opcionesAgencia().filter(o => !q || sinAcentos(o.nombre).includes(q) || sinAcentos(o.id).includes(q));
+    let html = "", grupo = "";
+    ops.forEach(o => {
+      if (o.grupo !== grupo) { grupo = o.grupo; html += `<li class="p-combo-grupo" role="presentation">${t(grupo)}</li>`; }
+      html += `<li role="option" data-id="${esc(o.id)}" aria-disabled="${!o.ok}" aria-selected="${o.id === s.agencia}"
+        class="${o.ok ? "" : "p-off"}${o.id === s.agencia ? " p-actual" : ""}"${o.ok ? "" : ` title="${t("sin_tarifa_rw")}"`}>${esc(o.nombre)}${o.ok ? "" : ` <small>· ${t("sin_tarifa")}</small>`}</li>`;
+    });
+    $("p-agencia-lista").innerHTML = html || `<li class="p-combo-grupo">${t("sin_coincidencias")}</li>`;
+    s.comboSel = -1;
+  }
+
+  function abrirComboAgencia(abrir) {
+    $("p-agencia-lista").hidden = !abrir;
+    $("p-agencia-q").setAttribute("aria-expanded", abrir);
+    if (abrir) pintarComboAgencia();
+    else if (s.yo) $("p-agencia-q").value = s.yo.agencia.nombre;
+  }
+
+  function elegirAgencia(id) {
+    abrirComboAgencia(false);
+    $("p-agencia-q").blur();
+    if (!id || id === s.agencia) return;
+    reiniciar(); sesion(id);
+  }
+
+  function enlazarComboAgencia() {
+    const q = $("p-agencia-q"), lista = $("p-agencia-lista");
+    q.addEventListener("focus", () => { q.value = ""; abrirComboAgencia(true); });
+    q.addEventListener("input", () => { lista.hidden = false; pintarComboAgencia(); });
+    q.addEventListener("keydown", e => {
+      const items = [...lista.querySelectorAll("li[data-id]:not(.p-off)")];
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        s.comboSel = Math.max(0, Math.min(items.length - 1, s.comboSel + (e.key === "ArrowDown" ? 1 : -1)));
+        items.forEach((li, i) => li.classList.toggle("p-foco", i === s.comboSel));
+        items[s.comboSel]?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        elegirAgencia((items[s.comboSel] || items[0])?.dataset.id);
+      } else if (e.key === "Escape") {
+        abrirComboAgencia(false); q.blur();
+      }
+    });
+    // mousedown (antes del blur del campo) para que el clic llegue a la opción
+    lista.addEventListener("mousedown", e => {
+      e.preventDefault();
+      const li = e.target.closest("li[data-id]");
+      if (li && !li.classList.contains("p-off")) elegirAgencia(li.dataset.id);
+    });
+    q.addEventListener("blur", () => setTimeout(() => abrirComboAgencia(false), 100));
   }
 
   function pintarPagos() {
@@ -196,7 +263,7 @@
 
     $("p-lang").addEventListener("change", e => { s.lang = e.target.value; guardado.set("lang", s.lang); aplicarIdioma(); repintar(); });
     $("p-marca").addEventListener("change", e => { s.marca = e.target.value; guardado.set("marca", s.marca); aplicarMarca(); });
-    $("p-agencia").addEventListener("change", e => { reiniciar(); sesion(e.target.value); });
+    enlazarComboAgencia();
     $("f-login").addEventListener("submit", entrar);
     $("p-user").addEventListener("click", () => { $("p-user-menu").hidden = !$("p-user-menu").hidden; });
     $("p-salir").addEventListener("click", salir);
@@ -872,7 +939,7 @@
     document.querySelector("#au-rol option[value=admin]").hidden = !esAdmin;
     $("au-agencia").innerHTML = a.agencias.map(x => `<option value="${esc(x.id)}">${esc(x.nombre)}</option>`).join("");
     $("aa-padre").innerHTML = `<option value="">${t("ninguna")}</option>` + a.agencias.map(x => `<option value="${esc(x.id)}">${esc(x.nombre)}</option>`).join("");
-    $("aa-broker").innerHTML = `<option value="">${t("heredar")}</option>` + (a.brokers || []).map(b => `<option value="${esc(b.id)}">${esc(b.nombre)}</option>`).join("");
+    $("aa-broker").innerHTML = `<option value="">${t("heredar")}</option>` + (a.brokers || []).map(b => `<option value="${esc(b.id)}"${b.reservable ? "" : " disabled"}>${esc(b.nombre)}${b.reservable ? "" : ` · ${t("sin_tarifa")}`}</option>`).join("");
     $("ad-usuarios").innerHTML = a.usuarios.length ? `<div class="p-table-wrap"><table class="p-table">
       <thead><tr><th>${t("email")}</th><th>${t("nombre")}</th><th>${t("agencia")}</th><th>${t("rol")}</th><th>${t("estado_u")}</th><th>${t("ultimo_acceso")}</th><th></th></tr></thead>
       <tbody>${a.usuarios.map(u => `<tr>

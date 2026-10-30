@@ -65,7 +65,12 @@ Alternativa propia al microsite de reservas para agencias, sobre el servidor loc
 
 - **Cuentas XML** (29/10): `brokers.ini` tiene los 168 clientes de Rentway del webservice (bloque
   `<nombre>-<clientid>`, company 200037). Prueba de precios: 78 con tarifa, 88 entran pero sin tarifa
-  en ninguna oficina/fecha probada ("NO RATE IS AVAILABLE"), 2 "CUSTOMER NOT AUTHORIZED".
+  en ninguna oficina/fecha probada ("NO RATE IS AVAILABLE"), 2 "CUSTOMER NOT AUTHORIZED". Esas 90
+  llevan `reservable = no`: se conservan pero no se pueden elegir (ni buscar precios ni crear reservas).
+- **Buscador de agencia** (cabecera): busca por nombre o id entre las agencias del portal y, para el
+  admin, entre los intermediarios (clientes Rentway, `rw:<broker>`). Con un intermediario el admin
+  reserva directamente con ese cliente: sin agencia del portal, solo pago en destino, ve todas sus
+  reservas. Los no reservables salen en gris.
 
 ## Configuración
 

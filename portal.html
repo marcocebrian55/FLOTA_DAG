@@ -35,9 +35,12 @@
         <button type="button" data-vista="admin" data-i18n="nav_admin" hidden>Administración</button>
       </nav>
       <div class="p-tools">
-        <label class="p-agency" id="p-agencia-wrap" hidden><span data-i18n="agencia">Agencia</span>
-          <select id="p-agencia"></select>
-        </label>
+        <div class="p-agency p-combo" id="p-agencia-wrap" hidden>
+          <span data-i18n="agencia">Agencia</span>
+          <input id="p-agencia-q" type="search" autocomplete="off" role="combobox" aria-expanded="false"
+                 aria-controls="p-agencia-lista" placeholder="Buscar agencia o intermediario…" />
+          <ul id="p-agencia-lista" class="p-combo-lista" role="listbox" hidden></ul>
+        </div>
         <span class="p-agency" id="p-agencia-fija"></span>
         <select id="p-marca" aria-label="Marca">
           <option value="avis">Avis</option>

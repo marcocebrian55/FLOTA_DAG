@@ -83,6 +83,8 @@ def load_brokers():
             "password": b.get("password", "").strip(),
             "rate": b.get("rate", "").strip(),
             "entorno": b.get("entorno", "produccion").strip().lower(),
+            # reservable = no: se conserva (p. ej. cliente sin tarifa en Rentway) pero no se puede elegir
+            "reservable": b.get("reservable", "si").strip().lower() not in ("no", "false", "0"),
         }
     return brokers
 
@@ -710,7 +712,7 @@ def visible(numero, b, ctx, agencia=None):
     """Una agencia ve lo que crearon ella o sus sucursales; la titular del cliente Rentway ve además
     lo que no salió del portal (mostrador, otros canales)."""
     if "mapa" not in ctx:
-        ctx["mapa"] = mapa_registro(pa.broker_de(ctx["d"], ctx["agencia"]))
+        ctx["mapa"] = mapa_registro(ctx.get("broker") or pa.broker_de(ctx["d"], ctx["agencia"]))
     ag = agencia or ctx["mapa"].get(str(numero))
     return ag in ctx["vis"] if ag else ctx["titular"]
 
@@ -749,11 +751,32 @@ def credito(d, agencia):
     return {"limite": limite, "usado": usado, "disponible": round(limite - usado, 2)}
 
 
+INTERMEDIARIO = "rw:"  # agencia "rw:<broker>": el admin reserva directamente con un cliente de Rentway
+
+
+def intermediario(u, agencia):
+    """Broker elegido por un admin como intermediario, o None."""
+    if not (u and u["rol"] == "admin" and str(agencia or "").startswith(INTERMEDIARIO)):
+        return None
+    k = agencia[len(INTERMEDIARIO):]
+    b = load_brokers().get(k)
+    return k if b and configured(b) and b["entorno"] != "prueba" and b["reservable"] else None
+
+
 def yo(u, agencia=None):
-    f = pa.ficha_yo(u, agencia)
+    rw = intermediario(u, agencia)
+    f = pa.ficha_yo(u, None if rw else agencia)
     d = pa.cargar()
-    if f["agencia"]["id"] and "credito" in f["agencia"]["pagos"]:
+    if rw:
+        f["agencia"] = {"id": INTERMEDIARIO + rw, "nombre": load_brokers()[rw]["nombre"], "pagos": ["destino"],
+                        "credito": None, "titular": True, "intermediario": True}
+    elif f["agencia"]["id"] and "credito" in f["agencia"]["pagos"]:
         f["agencia"]["credito_info"] = credito(d, f["agencia"]["id"])
+    if u["rol"] == "admin":
+        f["intermediarios"] = sorted(
+            [{"id": INTERMEDIARIO + k, "nombre": b["nombre"], "reservable": b["reservable"]}
+             for k, b in load_brokers().items() if configured(b) and b["entorno"] != "prueba"],
+            key=lambda x: x["nombre"].lower())
     return f
 
 
@@ -818,14 +841,15 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json({"error": "Sin permiso"}, 403)
             datos = pa.datos_admin(u)
             if u["rol"] == "admin":
-                datos["brokers"] = [{"id": k, "nombre": b["nombre"]} for k, b in load_brokers().items()
-                                    if configured(b) and b["entorno"] != "prueba"]
+                datos["brokers"] = [{"id": k, "nombre": b["nombre"], "reservable": b["reservable"]}
+                                    for k, b in load_brokers().items() if configured(b) and b["entorno"] != "prueba"]
             return self.send_json(datos)
         if path == "api/brokers":
             if MODO_PUBLICO and not (u and u["rol"] == "admin"):
                 return self.send_json({"error": "Sin permiso"}, 403)
             return self.send_json([
-                {"id": k, "nombre": b["nombre"], "activo": configured(b), "entorno": b["entorno"]}
+                {"id": k, "nombre": b["nombre"], "activo": configured(b) and b["reservable"],
+                 "reservable": b["reservable"], "entorno": b["entorno"]}
                 for k, b in load_brokers().items()
             ])
         if path in BLOCKED or path.startswith(".git") or path.endswith(".py"):
@@ -862,7 +886,8 @@ class Handler(SimpleHTTPRequestHandler):
             if path == "/api/admin/agencia":
                 if not u:
                     return self.send_json({"error": "Sin sesión"}, 401)
-                brokers = {k for k, b in load_brokers().items() if configured(b) and b["entorno"] != "prueba"}
+                brokers = {k for k, b in load_brokers().items()
+                           if configured(b) and b["entorno"] != "prueba" and b["reservable"]}
                 return self.send_json({"id": pa.guardar_agencia(u, body, brokers)})
             if path == "/api/admin/usuario":
                 if not u:
@@ -875,7 +900,14 @@ class Handler(SimpleHTTPRequestHandler):
 
         # Con sesión de portal, la agencia (y su cliente de Rentway) la decide el servidor, nunca el navegador
         ctx = None
-        if u:
+        rw = intermediario(u, body.get("agencia"))
+        if rw:
+            # admin con un intermediario de Rentway: sin agencia del portal, pago en destino, lo ve todo
+            d = pa.cargar()
+            ctx = {"u": u, "d": d, "agencia": None, "vis": set(d["agencias"]), "titular": True, "broker": rw}
+            body["provider"] = rw
+            body["_agencia"], body["_usuario"] = None, u["email"]
+        elif u:
             d = pa.cargar()
             act = pa.agencia_activa(d, u, body.get("agencia"))
             if not act:
@@ -892,6 +924,9 @@ class Handler(SimpleHTTPRequestHandler):
         b = load_brokers().get(broker_id)
         if not b or not configured(b):
             return self.send_json({"error": f"Broker sin credenciales: {broker_id}"}, 400)
+        if not b["reservable"] and (path in ("/api/precios", "/api/disponibilidad")
+                                    or path == "/api/reserva" and body.get("accion") == "N"):
+            return self.send_json({"error": "Ese cliente no tiene tarifa en Rentway: no se puede reservar con él"}, 400)
         if path == "/api/precios":
             if ctx:
                 return self.send_json({"error": "Sin permiso"}, 403)

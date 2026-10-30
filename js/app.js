@@ -446,7 +446,7 @@ async function loadBrokers(select) {
     state.brokers = brokers;
     if (!brokers.length) return;
     select.innerHTML = brokers.map(b =>
-      `<option value="${escapeHtml(b.id)}" ${b.activo ? "" : "disabled"}>${escapeHtml(b.nombre)}${b.activo ? "" : " (pendiente credenciales)"}</option>`
+      `<option value="${escapeHtml(b.id)}" ${b.activo ? "" : "disabled"}>${escapeHtml(b.nombre)}${b.activo ? "" : b.reservable === false ? " (sin tarifa)" : " (pendiente credenciales)"}</option>`
     ).join("");
     // Por defecto el canal directo; el entorno de pruebas de Jimpisoft nunca (su empresa ya no existe)
     const first = brokers.find(b => b.activo && b.id === "directo")
