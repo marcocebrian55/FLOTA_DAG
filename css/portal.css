@@ -53,13 +53,15 @@ body[data-marca="budget"] .p-logo, body[data-marca="xtravans"] .p-logo { color: 
 .p-tools select { padding: 6px 8px; border-radius: 6px; border: 0; font: inherit; background: #fff; color: var(--ink); }
 .p-agency { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .p-combo { position: relative; }
-.p-combo input { width: 240px; max-width: 60vw; padding: 6px 8px; border-radius: 6px; border: 0; font: inherit; background: #fff; color: var(--ink); }
+.p-tools .p-combo input { width: 240px; max-width: 60vw; padding: 6px 8px; border-radius: 6px; border: 0; font: inherit; background: #fff; color: var(--ink); }
 .p-combo-lista { position: absolute; top: calc(100% + 4px); right: 0; z-index: 50; width: 340px; max-width: 90vw; max-height: 60vh;
   overflow-y: auto; margin: 0; padding: 4px 0; list-style: none; background: #fff; color: var(--ink);
   border: 1px solid #dde2e8; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .15); }
 .p-combo-lista li { padding: 6px 12px; cursor: pointer; }
 .p-combo-lista li[data-id]:hover, .p-combo-lista li.p-foco { background: #eef3f8; }
 .p-combo-lista li.p-actual { font-weight: 600; }
+.p-of-lista { left: 0; right: auto; min-width: 100%; width: 380px; }
+.p-of-lista small { color: #6b7682; margin-left: 4px; }
 .p-combo-lista li.p-off { color: #9aa3ad; cursor: not-allowed; background: none; }
 .p-combo-lista .p-combo-grupo { padding: 8px 12px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7682; cursor: default; }
 .p-demo {

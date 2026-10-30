@@ -35,6 +35,7 @@ Alternativa propia al microsite de reservas para agencias, sobre el servidor loc
 | Pantalla | Servicio de Rentway | Estado |
 | --- | --- | --- |
 | Búsqueda por oficina, fechas, one-way, edad, promoción | getMultiplePrices | Funciona |
+| Oficinas con buscador, habituales del cliente primero | getStations + ListReservations | Funciona |
 | Ficha del vehículo (foto, plazas, maletas, cambio) | getGroupDetails (caché 6 h) | Funciona |
 | Filtros por categoría | Código SIPP + ficha | Funciona (heurística) |
 | Extras y coberturas con precio, cantidades e incompatibilidades | getExtras | Funciona |
@@ -70,6 +71,12 @@ Alternativa propia al microsite de reservas para agencias, sobre el servidor loc
   `reservable = no`: DoYouSpain 474 y Xpress 94 ("CUSTOMER NOT AUTHORIZED"), HovimaWeb 312 y TUI 168
   (sin precio en 19 oficinas probadas). `getStations` devuelve las 1.924 oficinas de la empresa, igual
   para todos los clientes (no filtra por cliente).
+- **Oficinas** (30/10): recogida y devolución son buscadores sobre las oficinas de `getStations`
+  (`/api/oficinas`, caché 24 h). Primero salen las **habituales del cliente** (`/api/habituales`:
+  oficinas de sus reservas de los últimos 120 días y próximos 240, caché 24 h; tarda 20-50 s la
+  primera vez en clientes grandes, mientras tanto se ven los aeropuertos). Al cambiar de agencia o
+  intermediario, si la oficina elegida no es de las suyas se propone la que más usa. Se busca por
+  nombre, código o ciudad. Los códigos de oficina admiten espacios (`FUE BUD`).
 - **Buscador de agencia** (cabecera): busca por nombre o id entre las agencias del portal y, para el
   admin, entre los intermediarios (clientes Rentway, `rw:<broker>`). Con un intermediario el admin
   reserva directamente con ese cliente: sin agencia del portal, solo pago en destino, ve todas sus

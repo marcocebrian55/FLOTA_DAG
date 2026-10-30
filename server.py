@@ -62,6 +62,8 @@ COOKIE = "portal_sesion"
 is_date = lambda s: bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", s or ""))
 is_datetime = lambda s: bool(re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}", s or ""))
 is_code = lambda s: bool(re.fullmatch(r"[A-Za-z0-9]{1,10}", s or ""))
+# Oficina de Rentway: hasta 10 caracteres, con espacios internos ("FUE BUD", "TFN TUR")
+is_station = lambda s: bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 ]{0,9}", s or "")) and s == s.rstrip()
 is_promo = lambda s: bool(re.fullmatch(r"[A-Za-z0-9_\-]{1,50}", s or ""))
 is_ref = lambda s: bool(re.fullmatch(r"[A-Za-z0-9_\-/.]{1,30}", s or ""))
 
@@ -346,7 +348,7 @@ ESTADOS_LISTADO = {"0": "Pendiente de confirmar", "1": "Confirmada", "2": "Cance
 
 def api_extras(b, d):
     if not (is_code(d.get("grupo")) and is_datetime(d.get("recogida")) and is_datetime(d.get("devolucion"))
-            and is_code(d.get("oficina_recogida"))):
+            and is_station(d.get("oficina_recogida"))):
         raise ValueError("Parámetros no válidos")
     return extras_disponibles(b, d)
 
@@ -488,8 +490,64 @@ def api_facturas(b, d):
     } for f in next(iter(t.values()), [])]}
 
 
+# ---------------------------------------------------------------- oficinas
+# getStations devuelve todas las oficinas de la empresa (~1.900: aeropuertos Avis/Budget/Turisprime,
+# Xtravans, hoteles…), la misma lista para cualquier cliente. Cada cliente tiene tarifa solo en
+# algunas: las "habituales" salen de sus reservas reales (ListReservations) y se muestran primero.
+
+_oficinas_cache = {}     # company → (instante, lista)
+_habituales_cache = {}   # (company, customer) → (instante, lista)
+_habituales_lock = __import__("threading").Lock()
+
+
+def api_oficinas(b, d):
+    hit = _oficinas_cache.get(b["company"])
+    if hit and time.time() - hit[0] < 24 * 3600:
+        return {"oficinas": hit[1]}
+    t = dataset(call12(b, "getStations", "getStations",
+                       tag("tns:companyCode", b["company"]) + tag("tns:customerCode", b["customer"])))
+    if "error" in t:
+        return t
+    ofs = sorted(({"id": f.get("StationID", "").strip(), "nombre": f.get("Station", "").strip(),
+                   "ciudad": f.get("City", "").strip()} for f in next(iter(t.values()), [])
+                  if f.get("StationID", "").strip()), key=lambda o: o["nombre"].lower())
+    _oficinas_cache[b["company"]] = (time.time(), ofs)
+    return {"oficinas": ofs}
+
+
+def api_habituales(b, d):
+    """Oficinas que el cliente usa de verdad (recogida y devolución), de más a menos uso."""
+    clave = (b["company"], b["customer"])
+    hit = _habituales_cache.get(clave)
+    if hit and time.time() - hit[0] < 24 * 3600:
+        return {"habituales": hit[1]}
+    with _habituales_lock:  # varias pestañas a la vez: una sola consulta a Rentway por cliente
+        hit = _habituales_cache.get(clave)
+        if hit and time.time() - hit[0] < 24 * 3600:
+            return {"habituales": hit[1]}
+        hoy = time.time()
+        desde = time.strftime("%Y-%m-%d", time.localtime(hoy - 120 * 86400))
+        hasta = time.strftime("%Y-%m-%d", time.localtime(hoy + 240 * 86400))
+        usos = {}
+        try:
+            t = listado_reservas(b, desde, hasta)
+        except Exception:
+            t = {"error": "sin respuesta"}
+        if "error" not in t:
+            for f in next(iter(t.values()), []):
+                for k in ("PickupStationID", "DropOffStationID"):
+                    st = (f.get(k) or "").strip()
+                    if st:
+                        usos[st] = usos.get(st, 0) + 1
+        lista = [k for k, _ in sorted(usos.items(), key=lambda x: -x[1])][:20]
+        # sin permiso de listado o sin reservas: no se guarda 24 h, se reintenta en 1 h
+        _habituales_cache[clave] = (time.time() - (0 if lista else 23 * 3600), lista)
+        return {"habituales": lista}
+
+
 CONSULTAS = {"/api/extras": api_extras, "/api/grupo": api_grupo,
-             "/api/listado": api_listado, "/api/facturas": api_facturas}
+             "/api/listado": api_listado, "/api/facturas": api_facturas,
+             "/api/oficinas": api_oficinas, "/api/habituales": api_habituales}
 
 # Prepago con tarjeta: construido pero apagado hasta tener pasarela (Redsys o similar)
 PASARELA_ACTIVA = False
@@ -521,7 +579,7 @@ def validar_reserva(accion, d):
     for k in ("recogida", "devolucion"):
         if not is_datetime(d.get(k)):
             return f"Fecha de {k} no válida (AAAA-MM-DD HH:MM)"
-        if not is_code(d.get(f"oficina_{k}")):
+        if not is_station(d.get(f"oficina_{k}")):
             return f"Falta la oficina de {k}"
     if d["devolucion"] <= d["recogida"]:
         return "La devolución debe ser posterior a la recogida"
@@ -957,7 +1015,7 @@ class Handler(SimpleHTTPRequestHandler):
         rate = (body.get("rateCode") or "").strip().upper() or None  # vacío = la tarifa del broker (o todas)
         # Sin groupID, Rentway devuelve todos los grupos y tarifas disponibles para el broker
         if not ((not group or is_code(group)) and (not rate or is_code(rate))
-                and is_code(st) and is_date(pu) and is_date(do)):
+                and is_station(st) and is_date(pu) and is_date(do)):
             return self.send_json({"error": "Parámetros no válidos"}, 400)
         try:
             status, xml = post_soap(
@@ -981,7 +1039,7 @@ class Handler(SimpleHTTPRequestHandler):
         promo = (d.get("promocion") or "").strip() or None
         if promo and not is_promo(promo):
             return self.send_json({"error": "Código de promoción no válido"}, 400)
-        if not (is_datetime(pu) and is_datetime(do) and is_code(sp) and is_code(sd)) or (dob and not is_date(dob)):
+        if not (is_datetime(pu) and is_datetime(do) and is_station(sp) and is_station(sd)) or (dob and not is_date(dob)):
             return self.send_json({"error": "Parámetros no válidos"}, 400)
         if do <= pu:
             return self.send_json({"error": "La devolución debe ser posterior a la recogida"}, 400)

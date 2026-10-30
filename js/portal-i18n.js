@@ -6,6 +6,9 @@
 const I18N = {
   es: {
     portal: "Portal de agencias", agencia: "Agencia",
+    of_buscar: "Buscar oficina…", of_habituales: "Habituales de este cliente", of_aeropuertos: "Aeropuertos",
+    of_resto: "Otras oficinas", of_cargando: "Buscando las oficinas habituales de este cliente…",
+    of_escribe: "Escribe para buscar entre las {n} oficinas", of_mas: "y {n} más: afina la búsqueda",
     buscar_agencia: "Buscar agencia o intermediario…", agencias_portal: "Agencias del portal",
     intermediarios: "Intermediarios (clientes Rentway)", sin_tarifa: "sin tarifa",
     sin_tarifa_rw: "Sin tarifa en Rentway: no se puede reservar con este cliente", sin_coincidencias: "Sin coincidencias",
@@ -79,6 +82,9 @@ const I18N = {
   },
   en: {
     portal: "Agency portal", agencia: "Agency",
+    of_buscar: "Search office…", of_habituales: "This customer's usual offices", of_aeropuertos: "Airports",
+    of_resto: "Other offices", of_cargando: "Looking up this customer's usual offices…",
+    of_escribe: "Type to search all {n} offices", of_mas: "and {n} more: refine the search",
     buscar_agencia: "Search agency or intermediary…", agencias_portal: "Portal agencies",
     intermediarios: "Intermediaries (Rentway customers)", sin_tarifa: "no rate",
     sin_tarifa_rw: "No rate in Rentway: bookings cannot be made with this customer", sin_coincidencias: "No matches",

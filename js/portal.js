@@ -41,7 +41,9 @@
     const [y, m, dd] = d.split("-");
     return `${dd}/${m}/${y}${h ? " " + h.slice(0, 5) : ""}`;
   };
-  const oficina = c => (PORTAL.oficinas.find(o => o[0] === c) || [c, c])[1];
+  // Oficinas: todas las de Rentway (getStations); las habituales del cliente, de sus reservas reales
+  const ofi = { lista: [], mapa: {}, habituales: null, cliente: null };
+  const oficina = c => (ofi.mapa[c] || {}).nombre || (PORTAL.oficinas.find(o => o[0] === c) || [c, c])[1];
 
   function toast(msg) {
     const el = $("p-toast");
@@ -94,6 +96,7 @@
     document.querySelector("[data-vista=facturas]").hidden = yo.rol === "agente" || !yo.agencia.titular;
     document.querySelector("[data-vista=admin]").hidden = yo.rol === "agente";
     pintarPagos();
+    cargarOficinas();
     if (yo.debe_cambiar) abrirClave(true);
   }
 
@@ -161,6 +164,84 @@
       if (li && !li.classList.contains("p-off")) elegirAgencia(li.dataset.id);
     });
     q.addEventListener("blur", () => setTimeout(() => abrirComboAgencia(false), 100));
+  }
+
+  /* ---------------------------------------------------------------- oficinas */
+  const valorOficina = id => $(id).dataset.code || "";
+  function ponerOficina(id, c) { const el = $(id); el.dataset.code = c || ""; el.value = c ? `${oficina(c)} (${c})` : ""; }
+
+  async function cargarOficinas() {
+    if (!ofi.lista.length) {
+      try {
+        const r = await api("/api/oficinas", {});
+        if (r.oficinas) { ofi.lista = r.oficinas; ofi.mapa = Object.fromEntries(r.oficinas.map(o => [o.id, o])); }
+      } catch { /* se usan las de portal-config.js */ }
+      ["b-of-rec", "b-of-dev"].forEach(id => ponerOficina(id, valorOficina(id)));  // nombres completos
+    }
+    const cliente = s.agencia;
+    ofi.cliente = cliente; ofi.habituales = null;
+    repintarOficinas();
+    let hab = [];
+    try { hab = (await api("/api/habituales", {})).habituales || []; } catch { /* sin habituales */ }
+    if (ofi.cliente !== cliente) return;  // cambió de agencia mientras tanto
+    ofi.habituales = hab;
+    // si la oficina elegida no la usa este cliente, se propone la que más usa
+    if (hab.length && !hab.includes(valorOficina("b-of-rec"))) { ponerOficina("b-of-rec", hab[0]); ponerOficina("b-of-dev", hab[0]); }
+    repintarOficinas();
+  }
+
+  function repintarOficinas() { $$(".p-of-lista:not([hidden])").forEach(l => l._pintar && l._pintar()); }
+
+  function htmlOficinas(q) {
+    const todas = ofi.lista.length ? ofi.lista : PORTAL.oficinas.map(([id, nombre]) => ({ id, nombre, ciudad: "" }));
+    const encaja = o => !q || sinAcentos(`${o.nombre} ${o.id} ${o.ciudad}`).includes(q);
+    const hab = (ofi.habituales || []).map(c => ofi.mapa[c] || { id: c, nombre: c, ciudad: "" }).filter(encaja);
+    const enHab = new Set(hab.map(o => o.id));
+    const aerop = todas.filter(o => /^apt /i.test(o.nombre) && !enHab.has(o.id) && encaja(o));
+    const resto = q ? todas.filter(o => !/^apt /i.test(o.nombre) && !enHab.has(o.id) && encaja(o)) : [];
+    const li = o => `<li role="option" data-id="${esc(o.id)}">${esc(o.nombre)} <small>${esc(o.id)}</small></li>`;
+    const grupo = k => `<li class="p-combo-grupo" role="presentation">${t(k)}</li>`;
+    let html = "";
+    if (ofi.habituales === null) html += grupo("of_cargando");
+    else if (hab.length) html += grupo("of_habituales") + hab.map(li).join("");
+    if (aerop.length) html += grupo("of_aeropuertos") + aerop.map(li).join("");
+    if (resto.length) html += grupo("of_resto") + resto.slice(0, 80).map(li).join("")
+      + (resto.length > 80 ? `<li class="p-combo-grupo">${t("of_mas").replace("{n}", resto.length - 80)}</li>` : "");
+    if (!q && ofi.lista.length) html += `<li class="p-combo-grupo">${t("of_escribe").replace("{n}", ofi.lista.length)}</li>`;
+    return html || `<li class="p-combo-grupo">${t("sin_coincidencias")}</li>`;
+  }
+
+  // Campo de oficina con buscador (el código elegido va en data-code)
+  function enlazarComboOficina(id, alElegir) {
+    const q = $(id), lista = document.createElement("ul");
+    lista.className = "p-combo-lista p-of-lista"; lista.hidden = true; lista.setAttribute("role", "listbox");
+    q.parentNode.classList.add("p-combo"); q.after(lista);
+    q.placeholder = t("of_buscar");
+    let sel = -1;
+    lista._pintar = () => { lista.innerHTML = htmlOficinas(sinAcentos(q.value.trim())); sel = -1; };
+    const cerrar = () => { lista.hidden = true; ponerOficina(id, valorOficina(id)); };
+    const elegir = c => { ponerOficina(id, c); lista.hidden = true; q.blur(); if (alElegir) alElegir(c); };
+    q.addEventListener("focus", () => { q.value = ""; lista.hidden = false; lista._pintar(); });
+    q.addEventListener("input", () => { lista.hidden = false; lista._pintar(); });
+    q.addEventListener("keydown", e => {
+      const items = [...lista.querySelectorAll("li[data-id]")];
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        sel = Math.max(0, Math.min(items.length - 1, sel + (e.key === "ArrowDown" ? 1 : -1)));
+        items.forEach((li, i) => li.classList.toggle("p-foco", i === sel));
+        items[sel]?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const li = items[sel] || items[0];
+        if (li) elegir(li.dataset.id);
+      } else if (e.key === "Escape") { cerrar(); q.blur(); }
+    });
+    lista.addEventListener("mousedown", e => {
+      e.preventDefault();
+      const li = e.target.closest("li[data-id]");
+      if (li) elegir(li.dataset.id);
+    });
+    q.addEventListener("blur", () => setTimeout(cerrar, 100));
   }
 
   function pintarPagos() {
@@ -249,8 +330,9 @@
 
   /* ---------------------------------------------------------------- arranque */
   document.addEventListener("DOMContentLoaded", async () => {
-    const ofs = PORTAL.oficinas.map(([c, n]) => `<option value="${c}">${esc(n)} (${c})</option>`).join("");
-    $$(".p-of").forEach(el => { el.innerHTML = ofs; });
+    ponerOficina("b-of-rec", PORTAL.oficinas[0][0]); ponerOficina("b-of-dev", PORTAL.oficinas[0][0]);
+    enlazarComboOficina("b-of-rec", c => ponerOficina("b-of-dev", c));
+    enlazarComboOficina("b-of-dev");
     $("c-pais").innerHTML = PORTAL.paises.map(([c, n]) => `<option value="${c}">${esc(n)}</option>`).join("");
 
     const hoy = new Date(), dia = n => new Date(hoy.getTime() + n * 864e5).toISOString().slice(0, 10);
@@ -277,7 +359,6 @@
     document.querySelector("[data-vista=admin]").addEventListener("click", cargarAdmin);
     $$("[data-vista]").forEach(b => b.addEventListener("click", () => vista(b.dataset.vista)));
 
-    $("b-of-rec").addEventListener("change", () => { $("b-of-dev").value = $("b-of-rec").value; });
     $("f-buscar").addEventListener("submit", e => { e.preventDefault(); buscar(); });
     $$("[data-cat]").forEach(b => b.addEventListener("click", () => {
       s.cat = b.dataset.cat; $$("[data-cat]").forEach(x => x.classList.toggle("on", x === b)); pintarResultados();
@@ -355,7 +436,7 @@
   /* ---------------------------------------------------------------- paso 1: búsqueda */
   async function buscar() {
     const q = {
-      oficina_recogida: $("b-of-rec").value, oficina_devolucion: $("b-of-dev").value,
+      oficina_recogida: valorOficina("b-of-rec"), oficina_devolucion: valorOficina("b-of-dev"),
       recogida: `${$("b-f-rec").value} ${$("b-h-rec").value}`, devolucion: `${$("b-f-dev").value} ${$("b-h-dev").value}`,
       nacimiento: $("b-nac").value, promocion: $("b-promo").value.trim(),
     };
@@ -801,13 +882,12 @@
 
   function formModificar(r) {
     const [fr, hr] = r.recogida.split(" "), [fd, hd] = r.devolucion.split(" ");
-    const ofs = PORTAL.oficinas.map(([c, n]) => `<option value="${c}">${esc(n)} (${c})</option>`).join("");
     $("m-accion").innerHTML = `
       <h3>${t("mod_titulo")}</h3>
       <p class="p-muted">${t("mod_nota")}</p>
       <form class="p-form" id="f-mod">
-        <label><span>${t("of_rec")}</span><select id="m-of-rec">${ofs}</select></label>
-        <label><span>${t("of_dev")}</span><select id="m-of-dev">${ofs}</select></label>
+        <label><span>${t("of_rec")}</span><input id="m-of-rec" type="search" autocomplete="off" /></label>
+        <label><span>${t("of_dev")}</span><input id="m-of-dev" type="search" autocomplete="off" /></label>
         <label><span>${t("f_rec")}</span><input type="date" id="m-f-rec" value="${esc(fr)}" /></label>
         <label><span>${t("hora")}</span><input type="time" id="m-h-rec" value="${esc((hr || "10:00").slice(0, 5))}" step="900" /></label>
         <label><span>${t("f_dev")}</span><input type="date" id="m-f-dev" value="${esc(fd)}" /></label>
@@ -817,14 +897,15 @@
       </form>
       <div class="p-actions"><button type="button" class="p-btn p-btn-main" id="m-guardar">${t("mod_guardar")}</button></div>
       <div id="m-mod-res"></div>`;
-    $("m-of-rec").value = r.oficina_recogida; $("m-of-dev").value = r.oficina_devolucion;
+    ponerOficina("m-of-rec", r.oficina_recogida); ponerOficina("m-of-dev", r.oficina_devolucion);
+    enlazarComboOficina("m-of-rec"); enlazarComboOficina("m-of-dev");
     $("m-guardar").addEventListener("click", async () => {
       const cambios = {};
       const rec = `${$("m-f-rec").value} ${$("m-h-rec").value}`, dev = `${$("m-f-dev").value} ${$("m-h-dev").value}`;
       if (rec !== r.recogida.slice(0, 16)) cambios.recogida = rec;
       if (dev !== r.devolucion.slice(0, 16)) cambios.devolucion = dev;
-      if ($("m-of-rec").value !== r.oficina_recogida) cambios.oficina_recogida = $("m-of-rec").value;
-      if ($("m-of-dev").value !== r.oficina_devolucion) cambios.oficina_devolucion = $("m-of-dev").value;
+      if (valorOficina("m-of-rec") !== r.oficina_recogida) cambios.oficina_recogida = valorOficina("m-of-rec");
+      if (valorOficina("m-of-dev") !== r.oficina_devolucion) cambios.oficina_devolucion = valorOficina("m-of-dev");
       if ($("m-vuelo").value.trim().toUpperCase() !== (r.vuelo || "")) cambios.vuelo = $("m-vuelo").value.trim().toUpperCase();
       if ($("m-obs").value.trim()) cambios.observaciones = $("m-obs").value.trim();
       if (!Object.keys(cambios).length) return toast(t("mod_nada"));
