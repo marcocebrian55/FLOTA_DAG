@@ -82,6 +82,12 @@ Alternativa propia al microsite de reservas para agencias, sobre el servidor loc
   reserva directamente con ese cliente: sin agencia del portal, solo pago en destino, ve todas sus
   reservas. Los no reservables salen en gris.
 
+- **Factura cliente / factura caja** (30/10): Rentway parte la reserva en dos facturas. El alquiler
+  (con el descuento del código promocional) va a la factura del cliente; el paquete (TUR MC/MSC…) va a
+  la de caja y lo paga el conductor en la oficina. El portal lo desglosa en la tarjeta, en el resumen
+  y en el bono ("A pagar en la oficina"): alquiler = misma tarifa sin paquete; caja = diferencia.
+  Comprobado con la 54582 (Autoeurope 13, BIELPA + TUR MSC, Budget10): 20,81 + 12,95 = 33,76.
+
 ## Configuración
 
 `js/portal-config.js`: marcas, oficinas, países, política de cancelación (PENDIENTE),

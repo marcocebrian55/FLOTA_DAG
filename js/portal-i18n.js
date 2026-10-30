@@ -6,6 +6,8 @@
 const I18N = {
   es: {
     portal: "Portal de agencias", agencia: "Agencia",
+    paquete_oficina: "paquete en oficina", factura_cliente: "factura al cliente",
+    factura_caja: "factura de caja: lo paga el conductor en la oficina", pagar_oficina: "A pagar en la oficina",
     of_buscar: "Buscar oficina…", of_habituales: "Habituales de este cliente", of_aeropuertos: "Aeropuertos",
     of_resto: "Otras oficinas", of_cargando: "Buscando las oficinas habituales de este cliente…",
     of_escribe: "Escribe para buscar entre las {n} oficinas", of_mas: "y {n} más: afina la búsqueda",
@@ -82,6 +84,8 @@ const I18N = {
   },
   en: {
     portal: "Agency portal", agencia: "Agency",
+    paquete_oficina: "package at the desk", factura_cliente: "invoiced to the customer",
+    factura_caja: "desk invoice: paid by the driver at the office", pagar_oficina: "To pay at the office",
     of_buscar: "Search office…", of_habituales: "This customer's usual offices", of_aeropuertos: "Airports",
     of_resto: "Other offices", of_cargando: "Looking up this customer's usual offices…",
     of_escribe: "Type to search all {n} offices", of_mas: "and {n} more: refine the search",

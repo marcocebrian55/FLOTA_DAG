@@ -484,6 +484,17 @@
 
   const precio = o => (o.descuento && o.total_desc) ? o.total_desc : o.total;
 
+  // Rentway parte la reserva en dos facturas: el alquiler va a la factura del cliente y el paquete
+  // (TUR MC/MSC…) a la factura de caja, que paga el conductor en la oficina. getMultiplePrices solo da
+  // el total con paquete: el alquiler es el precio de la misma tarifa sin paquete y la caja, la diferencia.
+  function desglose(o) {
+    if (!o || !o.paquete) return null;
+    const base = s.opciones.find(x => x.grupo === o.grupo && x.tarifa === o.tarifa && !x.paquete && x.dias === o.dias);
+    if (!base) return null;
+    const cliente = precio(base), caja = Math.round((precio(o) - cliente) * 100) / 100;
+    return caja > 0 ? { cliente, caja } : null;
+  }
+
   function pintarResultados() {
     const soloPack = $("b-solo-pack").checked;
     const porGrupo = new Map();
@@ -537,6 +548,7 @@
               <div class="p-price">
                 ${o.descuento ? `<s class="p-muted">${money(o.total)}</s> ` : ""}<strong>${money(precio(o))}</strong>
                 <small class="p-muted">${money(o.dia)}${t("por_dia")}</small>
+                ${(dg => dg ? `<small class="p-split">${t("alquiler")} ${money(dg.cliente)} + ${t("paquete_oficina")} ${money(dg.caja)}</small>` : "")(desglose(o))}
               </div>
               <button type="button" class="p-btn p-btn-main" data-elegir="${i}">${t("elegir")}</button>
             </div>`).join("")}
@@ -629,6 +641,7 @@
   function pintarTotal() {
     if (!s.elegida) return;
     const { base, total } = totalEstimado();
+    const dg = desglose(s.elegida);
     const lineas = Object.entries(s.sel).map(([c, n]) => {
       const x = s.extras.find(e => e.codigo === c);
       if (!x || x.obligatorio) return "";
@@ -636,7 +649,10 @@
     }).join("");
     $("c-total").innerHTML = `
       <table class="p-kv">
-        <tr><td>${t("alquiler")} (${esc(s.elegida.dias)} ${t("dias")})</td><td class="num">${money(base)}</td></tr>
+        ${dg ? `
+        <tr><td>${t("alquiler")} (${esc(s.elegida.dias)} ${t("dias")}) <small class="p-muted">· ${t("factura_cliente")}</small></td><td class="num">${money(dg.cliente)}</td></tr>
+        <tr><td>${t("paquete")} ${esc(s.elegida.paquete)} <small class="p-muted">· ${t("factura_caja")}</small></td><td class="num">${money(dg.caja)}</td></tr>`
+        : `<tr><td>${t("alquiler")} (${esc(s.elegida.dias)} ${t("dias")})</td><td class="num">${money(base)}</td></tr>`}
         ${lineas}
         <tr class="p-kv-total"><td>${t("total")}</td><td class="num">${money(total)}</td></tr>
       </table>
@@ -690,7 +706,7 @@
         vuelo: d.vuelo, grupo: d.grupo, nombre_grupo: s.elegida.nombre, tarifa: d.tarifa, paquete: d.paquete,
         dias: s.elegida.dias, conductor: `${d.apellidos}, ${d.nombre}`, pago: d.pago,
         extras: Object.entries(s.sel).map(([c, n]) => (s.extras.find(e => e.codigo === c)?.nombre || c) + (n > 1 ? " ×" + n : "")),
-        incluidos: s.elegida.incluidos,
+        incluidos: s.elegida.incluidos, caja: desglose(s.elegida)?.caja || null,
       };
       const dif = s.ultima.importe && Math.abs(s.ultima.importe - cotizado) > 0.01;
       $("r-resultado").innerHTML = `
@@ -776,6 +792,7 @@
         ${fila(t("incluye"), esc(r.incluidos || ""))}
         ${fila(t("extras"), esc((r.extras || []).join(", ")))}
         ${fila(t("pago"), esc(pagos[r.pago] || ""))}
+        ${r.caja ? fila(t("pagar_oficina"), `${money(r.caja)} · ${t("paquete")} ${esc(r.paquete || "")}`) : ""}
       </table>
       <p class="b-nota">${t("bono_presentar")}</p>
       <p class="b-pie">${t("emitido")}: ${fecha(new Date().toISOString().slice(0, 16).replace("T", " "))}</p>`;

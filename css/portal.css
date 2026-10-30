@@ -61,6 +61,7 @@ body[data-marca="budget"] .p-logo, body[data-marca="xtravans"] .p-logo { color: 
 .p-combo-lista li[data-id]:hover, .p-combo-lista li.p-foco { background: #eef3f8; }
 .p-combo-lista li.p-actual { font-weight: 600; }
 .p-of-lista { left: 0; right: auto; min-width: 100%; width: 380px; }
+.p-split { display: block; font-size: 11px; color: #6b7682; }
 .p-of-lista small { color: #6b7682; margin-left: 4px; }
 .p-combo-lista li.p-off { color: #9aa3ad; cursor: not-allowed; background: none; }
 .p-combo-lista .p-combo-grupo { padding: 8px 12px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7682; cursor: default; }
