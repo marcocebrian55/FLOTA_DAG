@@ -1,0 +1,26 @@
+# Blueprint de Render: portal de agencias (solo librería estándar de Python)
+# Secret files que hay que subir a mano en el panel de Render (NO van a git):
+#   brokers.ini y portal_datos.json  → quedan en /etc/secrets/
+services:
+  - type: web
+    name: portal-agencias
+    runtime: python
+    region: frankfurt
+    plan: free
+    branch: portal-agencias
+    buildCommand: "true"
+    startCommand: python server.py
+    healthCheckPath: /portal.html
+    envVars:
+      - key: PORTAL_PUBLICO
+        value: "1"
+      - key: BROKERS_INI
+        value: /etc/secrets/brokers.ini
+      - key: PORTAL_DATOS_SEMILLA
+        value: /etc/secrets/portal_datos.json
+      - key: PORTAL_DATOS
+        value: /tmp/portal_datos.json
+      - key: RESERVAS_LOG
+        value: /tmp/reservas.log
+      - key: PYTHON_VERSION
+        value: "3.12.7"

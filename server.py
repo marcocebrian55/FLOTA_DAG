@@ -39,9 +39,11 @@ from xml.sax.saxutils import escape
 import portal_auth as pa
 
 ROOT = Path(__file__).resolve().parent
-BROKERS_FILE = ROOT / "brokers.ini"
-LOG_FILE = ROOT / "reservas.log"
-PORT = 8787
+# En un hosting (Render) las rutas y el puerto llegan por variables de entorno
+BROKERS_FILE = Path(os.environ.get("BROKERS_INI") or ROOT / "brokers.ini")
+LOG_FILE = Path(os.environ.get("RESERVAS_LOG") or ROOT / "reservas.log")
+PORT = int(os.environ.get("PORT") or 8787)
+HOST = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
 
 # entorno de cada broker → URL base de los servicios
 ENTORNOS = {
@@ -1101,5 +1103,9 @@ if __name__ == "__main__":
         sys.exit(0)
     if not BROKERS_FILE.exists():
         print("AVISO: falta brokers.ini — copia brokers.ejemplo.ini y rellénalo.")
+    # Semilla de usuarios (p. ej. secret file de Render, solo lectura) → copia escribible
+    semilla = os.environ.get("PORTAL_DATOS_SEMILLA")
+    if semilla and Path(semilla).exists() and not pa.DATOS.exists():
+        pa.DATOS.write_bytes(Path(semilla).read_bytes())
     print(f"Panel en http://localhost:{PORT}")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
